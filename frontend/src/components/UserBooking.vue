@@ -11,31 +11,50 @@
       v-if="step === 'format'"
       class="space-y-6"
     >
-      <h2 class="text-xl font-bold text-foreground text-center">
-        Выберите формат встречи
-      </h2>
-      <div class="space-y-3">
-        <button
-          v-if="psychologist.onlineEnabled"
-          type="button"
-          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
-          @click="selectFormat('online')"
-        >
-          Онлайн
-        </button>
-        <div v-if="psychologist.offlineEnabled">
+      <template v-if="hasBothFormats">
+        <h2 class="text-xl font-bold text-foreground text-center">
+          Выберите формат встречи
+        </h2>
+        <div class="space-y-3">
           <button
+            v-if="psychologist.online.enabled"
             type="button"
-            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground w-full h-11"
-            @click="selectFormat('offline')"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
+            @click="selectFormat('online')"
           >
-            Очно
+            Онлайн
           </button>
-          <p class="text-xs text-muted-foreground text-center mt-1">
+          <div v-if="psychologist.offline.enabled">
+            <button
+              type="button"
+              class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground w-full h-11"
+              @click="selectFormat('offline')"
+            >
+              Очно
+            </button>
+            <p class="text-xs text-muted-foreground text-center mt-1">
+              {{ psychologist.offlineAddress }}
+            </p>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="rounded-lg border border-border p-4 text-center">
+          <p class="text-sm text-foreground">
+            {{ singleFormatLabel }}
+          </p>
+          <p v-if="singleFormat === 'offline' && psychologist.offlineAddress" class="text-xs text-muted-foreground mt-1">
             {{ psychologist.offlineAddress }}
           </p>
         </div>
-      </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
+          @click="goToStep('slot')"
+        >
+          Далее
+        </button>
+      </template>
     </div>
 
     <!-- Выбор дня и времени -->
@@ -43,25 +62,44 @@
       v-else-if="step === 'slot'"
       class="space-y-6"
     >
-      <div class="rounded-lg border border-border p-3">
+      <template v-if="hasBothFormats">
         <select
           v-model="format"
           class="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
         >
           <option
-            v-if="psychologist.onlineEnabled"
+            v-if="psychologist.online.enabled"
             value="online"
           >
             Онлайн
           </option>
           <option
-            v-if="psychologist.offlineEnabled"
+            v-if="psychologist.offline.enabled"
             value="offline"
           >
-            Очно ({{ psychologist.offlineAddress }})
+            Очно
           </option>
         </select>
-      </div>
+        <p
+          v-if="format === 'offline' && psychologist.offlineAddress"
+          class="text-xs text-muted-foreground"
+        >
+          {{ psychologist.offlineAddress }}
+        </p>
+      </template>
+      <template v-else>
+        <div class="rounded-lg border border-border p-3 text-center">
+          <p class="text-sm text-foreground">
+            {{ singleFormatLabel }}
+          </p>
+          <p
+            v-if="singleFormat === 'offline' && psychologist.offlineAddress"
+            class="text-xs text-muted-foreground mt-1"
+          >
+            {{ psychologist.offlineAddress }}
+          </p>
+        </div>
+      </template>
 
       <h3 class="text-lg font-bold text-foreground">
         {{ currentMonthName }}
@@ -69,28 +107,45 @@
 
       <!-- Скролл по дням -->
       <div
+        v-if="loadingSlots"
+        class="flex gap-2 overflow-x-auto pb-2"
+      >
+        <div
+          v-for="i in 7"
+          :key="i"
+          class="shrink-0 w-14 h-16 rounded-lg flex items-center justify-center"
+        >
+          <div class="w-full h-full rounded-lg bg-muted animate-pulse" />
+        </div>
+      </div>
+      <div
+        v-else-if="!hasAvailableDays"
+        class="rounded-lg border border-border p-4 text-center"
+      >
+        <p class="text-sm text-muted-foreground">
+          Доступного времени записи нет
+        </p>
+      </div>
+      <div
+        v-else
         ref="daysScroller"
         class="flex gap-2 overflow-x-auto pb-2 cursor-grab active:cursor-grabbing select-none"
         style="scrollbar-width: none"
         @mousedown="onDaysMouseDown"
-        @touchstart.passive="onDaysTouchStart"
+        @touchstart="onDaysTouchStart"
       >
-        <button
+        <div
           v-for="day in days"
           :key="day.date.toISOString()"
-          type="button"
-          :disabled="!day.available"
-          class="shrink-0 w-14 h-16 rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-colors cursor-grab active:cursor-grabbing"
+          class="shrink-0 w-14 h-16 rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-colors"
           :class="dayButtonClasses(day.date, day.available)"
-          @mousedown.stop="onDaysMouseDown"
-          @touchstart.stop.passive="onDaysTouchStart"
-          @click="selectDate(day.date)"
+          @click="day.available && selectDate(day.date)"
         >
           <span class="text-xs">
             {{ shortDayName(day.date) }}
           </span>
           <span>{{ day.date.getDate() }}</span>
-        </button>
+        </div>
       </div>
 
       <!-- Слоты времени -->
@@ -98,16 +153,33 @@
         v-if="selectedDate"
         class="grid grid-cols-3 gap-2"
       >
-        <button
-          v-for="time in timeSlots"
-          :key="time"
-          type="button"
-          :disabled="occupiedSlots.includes(time)"
-          class="h-11 rounded-lg text-sm font-medium transition-colors"
-          :class="timeButtonClasses(time)"
-          @click="selectedTime = time"
+        <div
+          v-if="loadingSlots"
+          v-for="i in 6"
+          :key="i"
+          class="h-11 rounded-lg"
         >
-          {{ time }}
+          <div class="w-full h-full rounded-lg animate-pulse" />
+        </div>
+        <div
+          v-else-if="timeSlots.length === 0"
+          class="col-span-3 rounded-lg border border-border p-4 text-center"
+        >
+          <p class="text-sm text-muted-foreground">
+            Нет доступного времени на этот день
+          </p>
+        </div>
+        <button
+          v-else
+          v-for="slot in timeSlots"
+          :key="slot.time"
+          type="button"
+          :disabled="!slot.available"
+          class="h-11 rounded-lg text-sm font-medium transition-colors"
+          :class="timeButtonClasses(slot)"
+          @click="onTimeSelect(slot.time)"
+        >
+          {{ slot.time }}
         </button>
       </div>
 
@@ -129,16 +201,6 @@
           </option>
         </select>
       </div>
-
-      <button
-        v-if="showStepButton"
-        type="button"
-        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
-        :disabled="!selectedDate || !selectedTime"
-        @click="goToStep('contact')"
-      >
-        Далее
-      </button>
     </div>
 
     <!-- Контакты клиента -->
@@ -182,8 +244,9 @@
       <button
         v-if="showStepButton"
         type="button"
-        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
-        :disabled="!clientName || !clientEmail || !agreed"
+        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors w-full h-11"
+        :class="canSubmit ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'"
+        :disabled="!canSubmit"
         @click="goToStep('success')"
       >
         Записаться
@@ -199,7 +262,7 @@
         Вы записаны ✓
       </h2>
       <p class="text-muted-foreground text-center text-sm">
-        Информация о встрече направлена на почту. Там вы можете перенести запись.
+        Информация о встрече направлена на почту.
       </p>
       <div class="rounded-xl border border-border p-4 space-y-2">
         <p
@@ -212,22 +275,71 @@
         <p class="text-foreground">
           {{ selectedTime }} (1 час)
         </p>
-        <p
+        <p class="text-sm text-muted-foreground">
+          {{ format === 'online' ? 'Онлайн' : 'Очно' }}
+        </p>
+        <p v-if="priceText" class="text-foreground">
+          {{ priceText }}
+        </p>
+        <div
           v-if="format === 'online' && psychologist.videoLink"
-          class="text-primary text-sm"
+          class="flex items-start gap-2 flex-col"
         >
-          Ссылка на встречу ({{ psychologist.videoLink }})
+          <span class="text-sm text-muted-foreground">Ссылка на встречу:</span>
+          <div class="flex gap-2 w-full items-center">
+            <a
+              :href="psychologist.videoLink"
+              target="_blank"
+              class="text-primary text-sm hover:underline"
+            >
+              {{ psychologist.videoLink }}
+            </a>
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-foreground"
+              @click="copyVideoLink"
+            >
+              <Copy class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <p
+          v-else-if="format === 'offline' && psychologist.offlineAddress"
+          class="text-sm text-muted-foreground"
+        >
+          {{ psychologist.offlineAddress }}
         </p>
       </div>
+      <div class="flex gap-2">
+        <a
+          :href="yandexCalendarUrl"
+          target="_blank"
+          class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
+        >
+          Добавить в Яндекс.Календарь
+        </a>
+        <a
+          :href="googleCalendarUrl"
+          target="_blank"
+          class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
+        >
+          Добавить в Google&nbsp;Календарь
+        </a>
+      </div>
+      <a
+        :href="icsDownloadUrl"
+        download="appointment.ics"
+        class="block text-xs text-muted-foreground text-center hover:text-foreground"
+      >
+        Скачать .ics файл
+      </a>
       <button
         type="button"
-        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
+        class="block text-sm text-primary hover:underline mx-auto"
+        @click="resetBooking"
       >
-        Добавить в Яндекс.Календарь
+        Записаться заново
       </button>
-      <p class="text-xs text-muted-foreground text-center">
-        Сервис записи CapyTime
-      </p>
     </div>
   </div>
 </template>
@@ -236,13 +348,17 @@
 import { defineComponent } from "vue";
 import Toggle from "@/components/ui/Toggle.vue";
 import PsychologistCard from "@/components/PsychologistCard.vue";
-import type { Psychologist } from "@/stores/onboarding";
+import type { Psychologist } from "@/lib/types";
+import { getTimezones, getLocalTimezone } from "@/lib/utils";
+import { useErrorStore } from "@/stores/error";
+import { Copy } from "lucide-vue-next";
 
 export default defineComponent({
   name: "UserBooking",
   components: {
     Toggle,
     PsychologistCard,
+    Copy,
   },
   props: {
     psychologist: {
@@ -270,24 +386,12 @@ export default defineComponent({
       selectedTime: null as string | null,
       clientName: "",
       clientEmail: "",
-      agreed: true,
+      agreed: false,
       clientTimezone: "",
-      timezones: [
-        "(UTC +02:00) Калининград",
-        "(UTC +03:00) Москва",
-        "(UTC +04:00) Самара",
-        "(UTC +05:00) Екатеринбург",
-        "(UTC +06:00) Омск",
-        "(UTC +07:00) Красноярск",
-        "(UTC +08:00) Иркутск",
-        "(UTC +09:00) Якутск",
-        "(UTC +10:00) Владивосток",
-        "(UTC +11:00) Магадан",
-        "(UTC +12:00) Камчатка",
-      ] as string[],
+      timezones: [] as string[],
       days: [] as { date: Date; available: boolean }[],
-      timeSlots: [] as string[],
-      occupiedSlots: ["12:00", "15:00"] as string[],
+      timeSlots: [] as { time: string; available: boolean }[],
+      availableSlotsByDate: {} as Record<string, { time: string; available: boolean }[]>,
       currentMonthIndex: new Date().getMonth(),
       months: [
         "Январь",
@@ -316,88 +420,350 @@ export default defineComponent({
       isDraggingDays: false,
       daysDragStartX: 0,
       daysDragScrollLeft: 0,
+      loadingSlots: false,
     };
   },
   computed: {
+    hasBothFormats(): boolean {
+      return !!(this.psychologist?.online?.enabled && this.psychologist?.offline?.enabled);
+    },
+    singleFormat(): "online" | "offline" | null {
+      let hasOnline = this.psychologist?.online?.enabled;
+      let hasOffline = this.psychologist?.offline?.enabled;
+      if (hasOnline && hasOffline) {
+        return null;
+      }
+
+      if (hasOnline) return "online";
+      if (hasOffline) return "offline";
+      
+      return null;
+    },
+    singleFormatLabel(): string {
+      if (this.singleFormat === "online") return "Встреча пройдёт онлайн";
+      if (this.singleFormat === "offline") return "Встреча пройдёт очно";
+      return "";
+    },
     currentMonthName(): string {
       return this.months[this.currentMonthIndex];
     },
+    canSubmit(): boolean {
+      return !!(this.clientName && this.agreed);
+    },
+    hasAvailableDays(): boolean {
+      return this.days.some(day => day.available);
+    },
+    priceText(): string {
+      const format = this.format === "online" 
+        ? this.psychologist?.online 
+        : this.psychologist?.offline;
+      if (format?.price) {
+        const price = parseInt(format.price);
+        const duration = format.slotDuration || 60;
+        const totalPrice = (price * duration) / 60;
+        return `${totalPrice} ₽`;
+      }
+      return "";
+    },
+    icsDownloadUrl(): string {
+      if (!this.selectedDate || !this.selectedTime) return "#";
+      const [hours, minutes] = this.selectedTime.split(":");
+      const startDate = new Date(this.selectedDate);
+      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + 1);
+      
+      const formatDate = (d: Date) => {
+        return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      };
+      
+      const start = formatDate(startDate);
+      const end = formatDate(endDate);
+      const now = formatDate(new Date());
+      
+      let description = "Консультация с психологом";
+      if (this.format === "online" && this.psychologist?.videoLink) {
+        description += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      }
+      
+      const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CapyTime//Booking//RU
+BEGIN:VEVENT
+UID:${Date.now()}@capytime
+DTSTAMP:${now}
+DTSTART:${start}
+DTEND:${end}
+SUMMARY:Психолог
+DESCRIPTION:${description}
+END:VEVENT
+END:VCALENDAR`;
+      
+      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+      return URL.createObjectURL(blob);
+    },
+    yandexCalendarUrl(): string {
+      if (!this.selectedDate || !this.selectedTime) return "#";
+      const [hours, minutes] = this.selectedTime.split(":");
+      const startDate = new Date(this.selectedDate);
+      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + 1);
+      
+      const formatDateLocal = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const h = String(d.getHours()).padStart(2, "0");
+        const m = String(d.getMinutes()).padStart(2, "0");
+        const s = String(d.getSeconds()).padStart(2, "0");
+        return `${year}${month}${day}T${h}${m}${s}`;
+      };
+      
+      const title = "Психолог";
+      let desc = "Консультация с психологом";
+      let place = "";
+      
+      if (this.format === "online" && this.psychologist?.videoLink) {
+        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
+        place = this.psychologist.offlineAddress;
+      }
+      
+      const params = new URLSearchParams({
+        name: title,
+        description: desc,
+        startTs: formatDateLocal(startDate),
+        endTs: formatDateLocal(endDate),
+      });
+      
+      if (place) {
+        params.append("location", place);
+      }
+      
+      return `https://calendar.yandex.ru/event?${params.toString()}`;
+    },
+    googleCalendarUrl(): string {
+      if (!this.selectedDate || !this.selectedTime) return "#";
+      const [hours, minutes] = this.selectedTime.split(":");
+      const startDate = new Date(this.selectedDate);
+      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + 1);
+      
+      const formatDate = (d: Date) => {
+        return d.toISOString().replace(/-/g, "").replace(/:/g, "");
+      };
+      
+      const title = "Психолог";
+      let desc = "Консультация с психологом";
+      let location = "";
+      
+      if (this.format === "online" && this.psychologist?.videoLink) {
+        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
+        location = this.psychologist.offlineAddress;
+      }
+      
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: title,
+        dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
+        details: desc,
+      });
+      
+      if (location) {
+        params.append("location", location);
+      }
+      
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    },
   },
   watch: {
+    step(val) {
+      if (val === "success") {
+        this.loadFromStorage();
+      }
+    },
     inputFormat(val: "online" | "offline" | undefined) {
       if (val !== undefined) {
         this.format = val;
       }
     },
+    format() {
+      this.loadAvailableSlots();
+    },
+    clientTimezone() {
+      this.loadAvailableSlots();
+    },
     psychologist: {
       handler() {
-        this.generateDays();
-        this.generateTimeSlots();
+        if (this.inputFormat === undefined && this.singleFormat) {
+          this.format = this.singleFormat;
+        }
+        this.loadAvailableSlots();
       },
       deep: true,
     },
-    format() {
-      this.generateTimeSlots();
-    },
   },
   created() {
-    if (this.inputFormat !== undefined) {
-      this.format = this.inputFormat;
+    this.timezones = getTimezones();
+    this.clientTimezone = getLocalTimezone();
+    this.loadFromStorage();
+    if (this.psychologist) {
+      if (this.inputFormat !== undefined) {
+        this.format = this.inputFormat;
+      } else if (this.singleFormat) {
+        this.format = this.singleFormat;
+        this.$emit("update:step", "slot");
+      }
+      this.loadAvailableSlots();
     }
-    this.clientTimezone = this.timezones[1];
-    this.generateDays();
-    this.generateTimeSlots();
   },
   methods: {
-    generateDays() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const workDays =
-        this.format === "online" ? this.psychologist.workDaysOnline : this.psychologist.workDaysOffline;
-
-      const list: { date: Date; available: boolean }[] = [];
-      const today = new Date(year, month, now.getDate());
-      for (let day = now.getDate(); day <= daysInMonth; day += 1) {
-        const date = new Date(year, month, day);
-        const dayOfWeek = date.getDay();
-        const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        const available = workDays.includes(adjustedDay) && date >= today;
-        list.push({ date, available });
+    async loadAvailableSlots() {
+      if (!this.psychologist) return;
+      if (this.loadingSlots) return;
+      this.loadingSlots = true;
+      const today = new Date();
+      const dateFrom = today.toISOString().split("T")[0];
+      const dateTo = new Date(today);
+      dateTo.setDate(dateTo.getDate() + 14);
+      const dateToStr = dateTo.toISOString().split("T")[0];
+      
+      const requestBody: Record<string, unknown> = {
+        dateFrom,
+        dateTo: dateToStr,
+        format: this.format,
+        clientTimezone: this.clientTimezone,
+      };
+      
+      if (this.psychologist?.id) {
+        requestBody.psychologistId = this.psychologist.id;
+      } else if (this.psychologist) {
+        requestBody.psychologist = {...this.psychologist, avatar: null};
       }
-      this.days = list;
-    },
-    generateTimeSlots() {
-      const isOnline = this.format === "online";
-      const fromParts = (isOnline ? this.psychologist.workFromOnline : this.psychologist.workFromOffline).split(":");
-      const toParts = (isOnline ? this.psychologist.workToOnline : this.psychologist.workToOffline).split(":");
-      let currentMinutes = parseInt(fromParts[0], 10) * 60 + parseInt(fromParts[1] || "0", 10);
-      const endMinutes = parseInt(toParts[0], 10) * 60 + parseInt(toParts[1] || "0", 10);
-      const slotDuration = isOnline ? this.psychologist.slotDurationOnline : this.psychologist.slotDurationOffline || 60;
-      const slots: string[] = [];
-
-      while (currentMinutes < endMinutes) {
-        const hours = Math.floor(currentMinutes / 60);
-        const mins = currentMinutes % 60;
-        slots.push(`${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`);
-        currentMinutes += slotDuration;
+      
+      try {
+        const response = await fetch("/api/calendar/available", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+        
+        if (!response.ok) {
+          useErrorStore().showError("Не удалось загрузить расписание");
+          return;
+        }
+        
+        const data = await response.json();
+        this.days = data.days.map((day: { date: string; available: boolean }) => ({
+          date: new Date(day.date),
+          available: day.available,
+        }));
+        
+        this.availableSlotsByDate = {};
+        data.days.forEach((day: { date: string; slots: { time: string; available: boolean }[] }) => {
+          this.availableSlotsByDate[day.date] = day.slots.map((slot: { time: string; available: boolean }) => ({
+            time: slot.time,
+            available: slot.available,
+          }));
+        });
+        
+        if (this.selectedDate) {
+          this.updateTimeSlotsFromState();
+        } else {
+          const firstAvailableDay = data.days.find((d: { available: boolean }) => d.available);
+          if (firstAvailableDay) {
+            this.timeSlots = this.availableSlotsByDate[firstAvailableDay.date] || [];
+          }
+        }
+      } catch (error) {
+        useErrorStore().showError("Не удалось загрузить данные");
+        console.error("Error loading available slots:", error);
+      } finally {
+        this.loadingSlots = false;
       }
-      this.timeSlots = slots;
     },
     selectFormat(fmt: "online" | "offline") {
       this.format = fmt;
       this.$emit("update:step", "slot");
       this.selectedDate = null;
       this.selectedTime = null;
-      this.generateDays();
     },
     goToStep(step: "format" | "slot" | "contact" | "success") {
-      this.$emit("update:step", step);
+      if (step === "success" && this.showStepButton) {
+        this.createAppointment();
+      } else {
+        this.$emit("update:step", step);
+      }
+    },
+    async createAppointment() {
+      if (!this.selectedDate || !this.selectedTime || !this.psychologist) return;
+      
+      const tzOffset = this.clientTimezone.match(/GMT([+-]\d+:\d+)/);
+      const offset = tzOffset ? tzOffset[1] : "+03:00";
+      const dateStr = this.selectedDate.toISOString().split("T")[0];
+      const [hours, minutes] = this.selectedTime.split(":");
+      const datetime = `${dateStr}T${hours}:${minutes}:00${offset}`;
+      
+      const requestBody: Record<string, unknown> = {
+        psychologist_id: this.psychologist.id,
+        client_name: this.clientName,
+        datetime: datetime,
+      };
+      
+      if (this.clientEmail) {
+        requestBody.client_email = this.clientEmail;
+      }
+      
+      try {
+        const response = await fetch("/api/appointments/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+        
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+            if (errorData.detail && Array.isArray(errorData.detail) && errorData.detail[0]?.msg) {
+              useErrorStore().showError(errorData.detail[0].msg);
+            } else {
+              useErrorStore().showError("Не удалось создать запись");
+            }
+          } catch {
+            useErrorStore().showError("Не удалось создать запись");
+          }
+          return;
+        }
+        
+        this.$emit("update:step", "success");
+        this.saveToStorage();
+      } catch (error) {
+        useErrorStore().showError("Не удалось создать запись");
+        console.error("Error creating appointment:", error);
+      }
     },
     selectDate(date: Date) {
       this.selectedDate = date;
       this.selectedTime = null;
+      this.updateTimeSlotsFromState();
+    },
+    onTimeSelect(time: string) {
+      this.selectedTime = time;
+      if (this.showStepButton) {
+        this.goToStep("contact");
+      }
+    },
+    updateTimeSlotsFromState() {
+      if (!this.selectedDate) return;
+      const dateStr = this.selectedDate.toISOString().split("T")[0];
+      this.timeSlots = this.availableSlotsByDate[dateStr] || [];
     },
     shortDayName(date: Date): string {
       return this.dayNames[date.getDay()];
@@ -418,13 +784,12 @@ export default defineComponent({
       }
       return "bg-secondary text-muted-foreground";
     },
-    timeButtonClasses(time: string) {
-      const occupied = this.occupiedSlots.includes(time);
-      const isSelected = this.selectedTime === time;
+    timeButtonClasses(slot: { time: string; available: boolean }) {
+      const isSelected = this.selectedTime === slot.time;
       if (isSelected) {
         return "bg-primary text-primary-foreground";
       }
-      if (occupied) {
+      if (!slot.available) {
         return "bg-secondary text-muted-foreground";
       }
       return "bg-background border-2 border-primary text-primary";
@@ -479,6 +844,51 @@ export default defineComponent({
       window.removeEventListener("touchmove", this.onDaysTouchMove);
       window.removeEventListener("touchend", this.onDaysTouchEnd);
       window.removeEventListener("touchcancel", this.onDaysTouchEnd);
+    },
+    addToGoogleCalendar() {
+      window.open(this.googleCalendarUrl, "_blank");
+    },
+    saveToStorage() {
+      const data = {
+        format: this.format,
+        selectedDate: this.selectedDate ? this.selectedDate.toISOString() : null,
+        selectedTime: this.selectedTime,
+        psychologistId: this.psychologist?.id,
+      };
+      localStorage.setItem("booking_success_data", JSON.stringify(data));
+    },
+    loadFromStorage() {
+      if (this.step !== "success") return;
+      const stored = localStorage.getItem("booking_success_data");
+      if (!stored) return;
+      try {
+        const data = JSON.parse(stored);
+        if (data.psychologistId === this.psychologist?.id) {
+          if (data.selectedDate) {
+            this.selectedDate = new Date(data.selectedDate);
+          }
+          if (data.selectedTime) {
+            this.selectedTime = data.selectedTime;
+          }
+          if (data.format) {
+            this.format = data.format;
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    },
+    resetBooking() {
+      localStorage.removeItem("booking_success_data");
+      this.selectedDate = null;
+      this.selectedTime = null;
+      this.$emit("update:step", "format");
+    },
+    copyVideoLink() {
+      if (this.psychologist?.videoLink) {
+        navigator.clipboard.writeText(this.psychologist.videoLink);
+        useErrorStore().showSuccess("Скопировано!");
+      }
     },
   },
 });

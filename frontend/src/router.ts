@@ -10,7 +10,7 @@ import { ALL_STEPS } from "./stores/onboarding";
 const onboardingSteps: RouteRecordRaw[] = [
   {
     path: "/onboarding",
-    redirect: () => ({ name: "onboarding-auth" }),
+    redirect: () => ({ name: "onboarding-calendar" }),
   },
   ...ALL_STEPS.map((step) => ({
     path: `/onboarding/${step.id}`,
@@ -22,10 +22,15 @@ const onboardingSteps: RouteRecordRaw[] = [
 const bookingSteps: RouteRecordRaw[] = [
   {
     path: "/booking",
-    redirect: () => ({ name: "booking-format" }),
+    redirect: () => ({ name: "home" }),
+  },
+  {
+    path: "/booking/:psychologistSlug",
+    name: "booking",
+    component: ClientBookingView,
   },
   ...(["format", "slot", "contact", "success"] as const).map((step) => ({
-    path: `/booking/${step}`,
+    path: `/booking/:psychologistSlug/${step}`,
     name: `booking-${step}`,
     component: ClientBookingView,
   })),
@@ -35,8 +40,12 @@ const routes: RouteRecordRaw[] = [
   { path: "/", name: "home", component: IndexView },
   ...onboardingSteps,
   ...bookingSteps,
-  { path: "/profile", name: "profile", component: PsychologistProfileView },
+  { path: "/profile/:slug", name: "profile", component: PsychologistProfileView },
   { path: "/schedule", name: "schedule", component: ScheduleView },
+  {
+    path: "/oauth/google/callback",
+    redirect: (to) => ({ name: "onboarding-calendar", query: to.query }),
+  },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 

@@ -1,16 +1,27 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
-    <Header />
+    <Header>
+      <template #right>
+        <RouterLink to="/onboarding">
+          <button
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
+            type="button"
+          >
+            Регистрация
+          </button>
+        </RouterLink>
+      </template>
+    </Header>
 
     <main class="flex-1">
       <!-- Hero -->
       <section class="container mx-auto px-4 pt-12 pb-16 md:pt-20 md:pb-24">
         <div class="max-w-2xl mx-auto text-center">
           <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4">
-            CapyTime — бесплатный сервис простой записи клиентов
+            CapyTime — бесплатная и простая запись клиентов
           </h1>
           <p class="text-base md:text-lg text-muted-foreground mb-8">
-            Клиенты сразу видят свободные слоты для записи и могут записаться на удобное время
+            Клиенты сразу видят свободные слоты и могут записаться на удобное время
           </p>
         </div>
         <div class="max-w-md mx-auto">

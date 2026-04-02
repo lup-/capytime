@@ -1,6 +1,7 @@
 <template>
   <div
-    class="relative"
+    class="multi-select relative"
+    data-multi-select
     @click.stop
   >
     <div
@@ -174,7 +175,7 @@ export default defineComponent({
     },
     handleClickOutside(e: MouseEvent) {
       const target = e.target as HTMLElement;
-      if (!target.closest(".relative")) {
+      if (!target.closest("[data-multi-select]")) {
         this.isOpen = false;
         this.searchText = "";
       }

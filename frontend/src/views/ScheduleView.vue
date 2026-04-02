@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
+    <Header />
+
     <main class="flex-1 container mx-auto px-4 py-8">
       <div class="max-w-md mx-auto space-y-6">
         <!-- Навигация по датам -->
@@ -96,14 +98,22 @@
         </div>
       </div>
     </main>
+
+    <Footer />
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import Header from "@/components/Header.vue";
+import Footer from "@/components/Footer.vue";
 
 export default defineComponent({
   name: "ScheduleView",
+  components: {
+    Header,
+    Footer,
+  },
   data() {
     const now = new Date();
     return {

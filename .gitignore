@@ -1,0 +1,6 @@
+.env
+database
+uploads
+!.gitkeep
+__pycache__
+google_client_secret.json

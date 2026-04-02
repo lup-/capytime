@@ -1,17 +1,17 @@
 <template>
   <header class="w-full border-b border-border bg-background sticky top-0 z-40">
-    <div class="container mx-auto flex items-center justify-between h-14 px-4">
-      <RouterLink to="/" class="text-xl font-bold text-foreground">
-        CapyTime
-      </RouterLink>
-      <RouterLink to="/onboarding">
-        <button
-          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-          type="button"
-        >
-          Регистрация
-        </button>
-      </RouterLink>
+    <ToastContainer />
+    <div class="container mx-auto flex items-center justify-between h-16 px-4">
+      <div class="flex items-center gap-4">
+        <slot name="left" />
+        <RouterLink to="/" class="flex items-center">
+          <img src="@/assets/logo.png" alt="CapyTime" class="h-12 hover:animate-spin cursor-pointer" />
+        </RouterLink>
+      </div>
+      <div class="flex items-center gap-2">
+        <slot name="right" />
+        <UserMenu />
+      </div>
     </div>
   </header>
 </template>
@@ -19,11 +19,15 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { RouterLink } from "vue-router";
+import UserMenu from "@/components/UserMenu.vue";
+import ToastContainer from "@/components/ToastContainer.vue";
 
 export default defineComponent({
   name: "Header",
   components: {
     RouterLink,
+    UserMenu,
+    ToastContainer,
   },
 });
 </script>

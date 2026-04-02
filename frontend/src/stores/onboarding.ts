@@ -1,86 +1,29 @@
 import { defineStore } from "pinia";
+import { getPsychologistSlug, getLocalTimezone } from "@/lib/utils";
+import type { Psychologist, ScheduleParams, PsychologistProfile } from "@/lib/types";
+import { useAuthStore } from "./auth";
+import { usePsychologistStore } from "./psychologist";
 
 export const ALL_STEPS = [
-  { id: "auth", label: "Авторизация" },
   { id: "calendar", label: "Календарь" },
   { id: "personal", label: "Личные данные" },
   { id: "photo", label: "Фотография" },
   { id: "format", label: "Формат работы" },
   { id: "online", label: "Онлайн" },
   { id: "offline", label: "Очно" },
-  { id: "break", label: "Перерыв" },
   { id: "video", label: "Видеозвонки" },
   { id: "done", label: "Готово" },
 ];
 
-export const TIMEZONES = [
-  "(UTC +02:00) Калининград",
-  "(UTC +03:00) Москва",
-  "(UTC +04:00) Самара",
-  "(UTC +05:00) Екатеринбург",
-  "(UTC +06:00) Омск",
-  "(UTC +07:00) Красноярск",
-  "(UTC +08:00) Иркутск",
-  "(UTC +09:00) Якутск",
-  "(UTC +10:00) Владивосток",
-  "(UTC +11:00) Магадан",
-  "(UTC +12:00) Камчатка",
-];
-
 export const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
-export interface Psychologist {
-  name: string;
-  specialty: string;
-  avatar: string | null;
-  onlineEnabled: boolean;
-  offlineEnabled: boolean;
-  onlinePrice: string;
-  offlinePrice: string;
-  offlineAddress: string;
-  workDaysOnline: number[];
-  workDaysOffline: number[];
-  workFromOnline: string;
-  workToOnline: string;
-  workFromOffline: string;
-  workToOffline: string;
-  slotDurationOnline: number;
-  slotDurationOffline: number;
-  timezone: string;
-  videoLink: string | null;
-}
 
 const STORAGE_KEY = "capytime_onboarding";
 
-interface OnboardingState {
-  completedSteps: string[];
-  onlineEnabled: boolean;
-  offlineEnabled: boolean;
-  email: string;
-  agreed: boolean;
-  firstName: string;
-  lastName: string;
-  specialties: string[];
-  onlinePrice: string;
-  offlinePrice: string;
-  offlineAddress: string;
-  onlineDays: number[];
-  offlineDays: number[];
-  onlineFrom: string;
-  onlineTo: string;
-  offlineSameAsOnline: boolean;
-  offlineFrom: string;
-  offlineTo: string;
-  breakNeeded: string;
-  breakDuration: string;
-  offlineBreakNeeded: string;
-  offlineBreakDuration: string;
-  timezone: string;
-  avatar: string | null;
-  videoLink: string;
+interface OnboardingStorage {
+  completedSteps?: string[];
 }
 
-function loadFromStorage(): Partial<OnboardingState> {
+function loadOnboardingState(): OnboardingStorage {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
@@ -88,44 +31,69 @@ function loadFromStorage(): Partial<OnboardingState> {
   return {};
 }
 
-function saveToStorage(state: OnboardingState) {
+function saveOnboardingState(state: OnboardingStorage) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {}
 }
 
+interface OnboardingState {
+  psychologistId: string | null;
+  completedSteps: string[];
+  firstName: string;
+  lastName: string;
+  specialties: string[];
+  problems: string[];
+  offlineAddress: string;
+  offlineSameAsOnline: boolean;
+  timezone: string;
+  avatar: string | null;
+  videoLink: string;
+  videoConferenceMode: "per_booking" | "single";
+  yandexTelemostConnected: boolean;
+  googleCalendarConnected: boolean;
+  online: ScheduleParams;
+  offline: ScheduleParams;
+}
+
 export const useOnboardingStore = defineStore("onboarding", {
   state: (): OnboardingState => {
-    const saved = loadFromStorage();
-    const offset = -new Date().getTimezoneOffset() / 60;
-    const match = TIMEZONES.find((tz) => tz.includes(`+${String(offset).padStart(2, "0")}:00`));
-
+    const saved = loadOnboardingState();
     return {
+      psychologistId: null,
       completedSteps: saved.completedSteps || [],
-      onlineEnabled: saved.onlineEnabled ?? true,
-      offlineEnabled: saved.offlineEnabled ?? true,
-      email: saved.email || "",
-      agreed: saved.agreed ?? true,
-      firstName: saved.firstName || "",
-      lastName: saved.lastName || "",
-      specialties: saved.specialties || [],
-      onlinePrice: saved.onlinePrice || "",
-      offlinePrice: saved.offlinePrice || "",
-      offlineAddress: saved.offlineAddress || "",
-      onlineDays: saved.onlineDays ?? [0, 1, 2, 3, 4],
-      offlineDays: saved.offlineDays ?? [0, 1, 2, 3, 4],
-      onlineFrom: saved.onlineFrom || "10:00",
-      onlineTo: saved.onlineTo || "19:00",
-      offlineSameAsOnline: saved.offlineSameAsOnline ?? true,
-      offlineFrom: saved.offlineFrom || "10:00",
-      offlineTo: saved.offlineTo || "19:00",
-      breakNeeded: saved.breakNeeded || "yes",
-      breakDuration: saved.breakDuration || "30",
-      offlineBreakNeeded: saved.offlineBreakNeeded || "yes",
-      offlineBreakDuration: saved.offlineBreakDuration || "30",
-      timezone: saved.timezone || match || TIMEZONES[1],
-      avatar: saved.avatar || null,
-      videoLink: saved.videoLink || "",
+      firstName: "",
+      lastName: "",
+      specialties: [],
+      problems: [],
+      offlineAddress: "",
+      offlineSameAsOnline: true,
+      timezone: getLocalTimezone(),
+      avatar: null,
+      videoLink: "",
+      videoConferenceMode: "per_booking",
+      yandexTelemostConnected: false,
+      googleCalendarConnected: false,
+      online: {
+        enabled: true,
+        price: "",
+        days: [0, 1, 2, 3, 4],
+        timeFrom: "10:00",
+        timeTo: "19:00",
+        breakNeeded: true,
+        breakDuration: "30",
+        slotDuration: 60,
+      },
+      offline: {
+        enabled: true,
+        price: "",
+        days: [0, 1, 2, 3, 4],
+        timeFrom: "10:00",
+        timeTo: "19:00",
+        breakNeeded: true,
+        breakDuration: "30",
+        slotDuration: 60,
+      },
     };
   },
   getters: {
@@ -133,70 +101,156 @@ export const useOnboardingStore = defineStore("onboarding", {
       return ALL_STEPS.map((s) => ({
         ...s,
         hidden:
-          (s.id === "online" && !this.onlineEnabled) ||
-          (s.id === "offline" && !this.offlineEnabled),
+          (s.id === "online" && !this.online.enabled) ||
+          (s.id === "offline" && !this.offline.enabled),
       }));
     },
     visibleStepIds(): string[] {
       return this.steps.filter((s) => !s.hidden).map((s) => s.id);
     },
     bookingLink(): string {
-      const translit = (s: string) => {
-        const map: Record<string, string> = {
-          а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "zh", з: "z", и: "i",
-          й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t",
-          у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "",
-          э: "e", ю: "yu", я: "ya",
-        };
-        return s.toLowerCase().split("").map((c) => map[c] || c).join("").replace(/[^a-z0-9]/g, "");
-      };
-      const first = translit(this.firstName.trim());
-      const last = translit(this.lastName.trim());
-      const slug = last ? `${first}-${last}` : first || "yourname";
-      return `capytime.ru/${slug}`;
+      return `capytime.ru/${this.psychologistSlug}`;
+    },
+    psychologistSlug(): string {
+      let psychologist = useAuthStore().psychologist || {};
+      return getPsychologistSlug({...psychologist, firstName: this.firstName, lastName: this.lastName });
     },
     psychologist(): Psychologist {
-      const onlineBreakDuration = this.breakNeeded === "yes" ? parseInt(this.breakDuration || "30", 10) : 0;
-      const offlineBreakDuration = this.offlineBreakNeeded === "yes" ? parseInt(this.offlineBreakDuration || "30", 10) : 0;
+      const onlineBreakDuration = this.online.breakNeeded ? parseInt(this.online.breakDuration || "30", 10) : 0;
+      const offlineBreakDuration = this.offline.breakNeeded ? parseInt(this.offline.breakDuration || "30", 10) : 0;
 
-      const offlineFrom = this.offlineSameAsOnline ? this.onlineFrom : this.offlineFrom;
-      const offlineTo = this.offlineSameAsOnline ? this.onlineTo : this.offlineTo;
+      const offlineFrom = this.offlineSameAsOnline ? this.online.timeFrom : this.offline.timeFrom;
+      const offlineTo = this.offlineSameAsOnline ? this.online.timeTo : this.offline.timeTo;
 
       return {
-        name: `${this.firstName} ${this.lastName}`.trim() || "Специалист",
+        id: "",
+        firstName: this.firstName,
+        lastName: this.lastName,
+        slug: this.psychologistSlug,
         specialty: this.specialties.join(", ") || "",
         avatar: this.avatar,
-        onlineEnabled: this.onlineEnabled,
-        offlineEnabled: this.offlineEnabled,
-        onlinePrice: this.onlinePrice || "0",
-        offlinePrice: this.offlinePrice || "0",
+        online: {
+          enabled: this.online.enabled,
+          price: this.online.price || "0",
+          days: this.online.days,
+          timeFrom: this.online.timeFrom || "10:00",
+          timeTo: this.online.timeTo || "19:00",
+          breakNeeded: this.online.breakNeeded,
+          breakDuration: this.online.breakDuration,
+          slotDuration: 60,
+        },
+        offline: {
+          enabled: this.offline.enabled,
+          price: this.offline.price || "0",
+          days: this.offline.days,
+          timeFrom: offlineFrom || "10:00",
+          timeTo: offlineTo || "19:00",
+          breakNeeded: this.offline.breakNeeded,
+          breakDuration: this.offline.breakDuration,
+          slotDuration: 60,
+        },
         offlineAddress: this.offlineAddress || "",
-        workDaysOnline: this.onlineDays,
-        workDaysOffline: this.offlineDays,
-        workFromOnline: this.onlineFrom || "10:00",
-        workToOnline: this.onlineTo || "19:00",
-        workFromOffline: offlineFrom || "10:00",
-        workToOffline: offlineTo || "19:00",
-        slotDurationOnline: 60 + onlineBreakDuration,
-        slotDurationOffline: 60 + offlineBreakDuration,
         timezone: this.timezone,
         videoLink: this.videoLink || null,
+        problems: this.problems,
+        googleCalendarConnected: this.googleCalendarConnected,
+        yandexTelemostConnected: this.yandexTelemostConnected,
       };
     },
   },
   actions: {
-    persist() {
-      saveToStorage(this.$state);
+    async loadFromBackend(token: string): Promise<boolean> {
+      const authStore = useAuthStore();
+      authStore.token = token;
+      const verified = await authStore.verify();
+      
+      if (!verified || !authStore.psychologist) {
+        this.reset();
+        return false;
+      }
+      
+      const data = authStore.psychologist;
+      
+      if (data.id) {
+        this.psychologistId = data.id;
+      }
+      
+      if (data.firstName) {
+        this.firstName = data.firstName;
+      }
+      if (data.lastName) {
+        this.lastName = data.lastName;
+      }
+      
+      this.googleCalendarConnected = data.googleCalendarConnected;
+      this.yandexTelemostConnected = data.yandexTelemostConnected;
+
+      if (data.timezone) {
+        this.timezone = data.timezone;
+      }
+      
+      if (data.online) {
+        this.online = {
+          enabled: data.online.enabled ?? true,
+          price: data.online.price ?? "",
+          days: data.online.days ?? [0, 1, 2, 3, 4],
+          timeFrom: data.online.timeFrom ?? "10:00",
+          timeTo: data.online.timeTo ?? "19:00",
+          breakNeeded: data.online.breakNeeded ?? true,
+          breakDuration: data.online.breakDuration || "30",
+          slotDuration: data.online.slotDuration || 60,
+        };
+      }
+      
+      if (data.offline) {
+        this.offline = {
+          enabled: data.offline.enabled ?? true,
+          price: data.offline.price ?? "",
+          days: data.offline.days ?? [0, 1, 2, 3, 4],
+          timeFrom: data.offline.timeFrom ?? "10:00",
+          timeTo: data.offline.timeTo ?? "19:00",
+          breakNeeded: data.offline.breakNeeded ?? true,
+          breakDuration: data.offline.breakDuration || "30",
+          slotDuration: data.offline.slotDuration || 60,
+        };
+      }
+      
+      if (data.offlineAddress) {
+        this.offlineAddress = data.offlineAddress;
+      }
+      
+      if (data.videoLink) {
+        this.videoLink = data.videoLink;
+        this.videoConferenceMode = "single";
+      } else {
+        this.videoConferenceMode = "per_booking";
+      }
+      
+      if (data.avatar) {
+        this.avatar = data.avatar;
+      }
+      
+      return true;
+    },
+    async persist() {
+      const psychologistStore = usePsychologistStore();
+      
+      if (this.psychologistId) {
+        await psychologistStore.savePsychologist(this.psychologistId, this.psychologist);
+      }
     },
     markStepComplete(step: string) {
       if (!this.completedSteps.includes(step)) {
         this.completedSteps.push(step);
+        saveOnboardingState({ completedSteps: this.completedSteps });
       }
       this.persist();
     },
     reset() {
-      localStorage.removeItem(STORAGE_KEY);
+      const authStore = useAuthStore();
+      authStore.logout();
       localStorage.removeItem("capytimeAvatar");
+      localStorage.removeItem(STORAGE_KEY);
     },
   },
 });

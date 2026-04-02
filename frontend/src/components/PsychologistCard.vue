@@ -9,12 +9,12 @@
         />
       </template>
       <template v-else>
-        {{ psychologist.name[0] }}
+        {{ psychologist.firstName?.[0] || "" }}
       </template>
     </div>
     <div class="text-center">
       <p class="font-medium text-foreground">
-        {{ psychologist.name }}
+        {{ fullName }}
       </p>
       <p
         v-if="psychologist.specialty"
@@ -27,8 +27,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import type { Psychologist } from "@/stores/onboarding";
+import { defineComponent, computed } from "vue";
+import type { Psychologist } from "@/lib/types";
 
 export default defineComponent({
   name: "PsychologistCard",
@@ -37,6 +37,14 @@ export default defineComponent({
       type: Object as () => Psychologist,
       required: true,
     },
+  },
+  setup(props) {
+    const fullName = computed(() => {
+      const first = props.psychologist.firstName || "";
+      const last = props.psychologist.lastName || "";
+      return [first, last].filter(Boolean).join(" ");
+    });
+    return { fullName };
   },
 });
 </script>
