@@ -55,3 +55,20 @@ def create_psychologist_token(psychologist: dict) -> str:
         {"sub": str(psychologist["_id"]), "email": email},
         expires_delta=timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
     )
+
+
+def generate_edit_token(event_id: str, psychologist_id: str, client_email: str | None = None) -> str:
+    payload = {
+        "event_id": event_id,
+        "psychologist_id": psychologist_id,
+    }
+    if client_email:
+        payload["client_email"] = client_email
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_edit_token(token: str) -> Optional[dict]:
+    try:
+        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError:
+        return None

@@ -17,6 +17,7 @@
       :steps="store.steps"
       :current-step="currentStep"
       :completed-steps="store.completedSteps"
+      :calendar-connected="store.googleCalendarConnected"
       @update:currentStep="(val: string) => navigateTo(val)"
     />
 
@@ -235,7 +236,7 @@
           v-else-if="currentStep === 'online'"
           class="space-y-6"
         >
-          <div>
+          <!--div>
             <label class="text-sm font-medium text-foreground">Стоимость часа работы онлайн</label>
             <input
               v-model="store.online.price"
@@ -243,7 +244,7 @@
               placeholder="4000"
               class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
-          </div>
+          </div-->
           <p class="text-foreground">
             Уточните информацию о расписании, чтобы настроить онлайн-запись.
           </p>
@@ -341,7 +342,7 @@
           v-else-if="currentStep === 'offline'"
           class="space-y-6"
         >
-          <div>
+          <!--div>
             <label class="text-sm font-medium text-foreground">Стоимость часа очной работы</label>
             <input
               v-model="store.offline.price"
@@ -349,7 +350,7 @@
               placeholder="5000"
               class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
             />
-          </div>
+          </div-->
           <p class="text-foreground">
             Уточните информацию о расписании, чтобы настроить очную запись.
           </p>
@@ -495,12 +496,12 @@
           </div>
 
           <div v-if="store.videoConferenceMode === 'single'">
-            <label class="text-sm font-medium text-foreground">Ссылка на видеоконференцию</label>
+            <label class="text-sm text-foreground">Можно подключить Телемост, Zoom, Google Meet или любой другой сервис. Эта ссылка будет показана клиентам при записи</label>
             <input
               v-model="store.videoLink"
               type="text"
-              placeholder="https://zoom.us/..."
-              class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              placeholder="Ссылка на видеоконференцию..."
+              class="mt-5 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
             />
           </div>
 
@@ -656,6 +657,10 @@ export default defineComponent({
       this.$router.replace({ name: "onboarding-calendar" });
       return;
     }
+    
+    if (this.currentStep !== "calendar" && !this.store.googleCalendarConnected) {
+      this.$router.replace({ name: "onboarding-calendar" });
+    }
   },
   computed: {
     store(): ReturnType<typeof useOnboardingStore> {
@@ -750,6 +755,10 @@ export default defineComponent({
       }
     },
     navigateTo(step: string) {
+      if (!this.store.googleCalendarConnected && step !== "calendar") {
+        useErrorStore().showError("Сначала подключите календарь");
+        return;
+      }
       if (this.store.visibleStepIds.includes(step)) {
         this.$router.push({ name: `onboarding-${step}` });
       } else if (step === "online" || step === "offline") {

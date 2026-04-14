@@ -10,6 +10,7 @@
         :key="step.id"
         :ref="step.id === currentStep ? 'activeRef' : null"
         type="button"
+        :disabled="!calendarConnected && step.id !== 'calendar'"
         @click="handleStepClick(step.id)"
         class="shrink-0 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors"
         :class="buttonClasses(step)"
@@ -44,6 +45,10 @@ export default defineComponent({
       type: Array as PropType<string[]>,
       required: true,
     },
+    calendarConnected: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["update:currentStep"],
   setup(props, { emit }) {
@@ -61,17 +66,22 @@ export default defineComponent({
     };
 
     const handleStepClick = (stepId: string) => {
+      if (!props.calendarConnected && stepId !== "calendar") {
+        return;
+      }
       emit("update:currentStep", stepId);
     };
 
     const buttonClasses = (step: StepItem) => {
       const isActive = step.id === props.currentStep;
       const isCompleted = props.completedSteps.includes(step.id);
+      const isDisabled = !props.calendarConnected && step.id !== "calendar";
 
       return [
         isActive && "bg-foreground text-background",
         isCompleted && !isActive && "bg-primary/10 text-primary",
-        !isActive && !isCompleted && "text-muted-foreground hover:bg-secondary",
+        !isActive && !isCompleted && !isDisabled && "text-muted-foreground hover:bg-secondary",
+        isDisabled && "text-muted-foreground/50 cursor-not-allowed",
       ]
         .filter(Boolean)
         .join(" ");

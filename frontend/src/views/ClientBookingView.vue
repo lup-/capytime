@@ -15,6 +15,14 @@
           >
             ←
           </button>
+          <button
+            v-else-if="editToken"
+            type="button"
+            class="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
+            @click="goHome"
+          >
+            ←
+          </button>
         </template>
       </Header>
 
@@ -22,7 +30,9 @@
         <UserBooking
           :psychologist="psychologist"
           :step="currentStep"
-          @update:step="(val) => navigateTo(val)"
+          :edit-token="editToken"
+          @update:step="(val, data) => navigateTo(val, data)"
+          @appointment-created="onAppointmentCreated"
         />
       </main>
 
@@ -67,12 +77,19 @@ export default defineComponent({
     psychologistSlug(): string {
       return this.$route.params.psychologistSlug as string || "";
     },
+    editToken(): string | null {
+      return this.$route.params.editToken as string || null;
+    },
+    isEditMode(): boolean {
+      return !!this.editToken;
+    },
     isValidStep(): boolean {
       const name = this.$route.name as string | undefined;
       if (name === "booking") return true;
-      const match = name?.match(/^booking-(.+)$/);
-      const step = match ? match[1] : undefined;
-      return !!(step && BOOKING_STEPS.includes(step as BookingStep));
+      if (name === "booking-edit") return true;
+      if (name === "booking-success") return true;
+      const match = name?.match(/^booking-(format|slot|contact)$/);
+      return !!match;
     },
     currentStep(): BookingStep {
       const name = this.$route.name as string | undefined;
@@ -83,11 +100,9 @@ export default defineComponent({
         if (!hasOnline || !hasOffline) return "slot";
         return "format";
       }
-      const match = name?.match(/^booking-(.+)$/);
-      const step = match ? match[1] : undefined;
-      if (step && BOOKING_STEPS.includes(step as BookingStep)) {
-        return step as BookingStep;
-      }
+      if (name === "booking-format") return "format";
+      if (name === "booking-slot") return "slot";
+      if (name === "booking-contact") return "contact";
       return "format";
     },
   },
@@ -126,15 +141,41 @@ export default defineComponent({
         this.notFoundMessage = "Психолог не найден";
       }
     },
-    navigateTo(step: BookingStep) {
-      this.$router.push({ name: `booking-${step}`, params: { psychologistSlug: this.psychologistSlug } });
+    navigateTo(step: BookingStep, data?: any) {
+      if (step === "success") {
+        const token = data?.edit_token || this.editToken;
+        this.$router.push({
+          name: `booking-success`,
+          params: { psychologistSlug: this.psychologistSlug, editToken: token },
+        });
+      } else {
+        const routeName = `booking-${step}`;
+        const params: Record<string, string> = { psychologistSlug: this.psychologistSlug };
+        if (this.isEditMode) {
+          params.editToken = this.editToken;
+        }
+        this.$router.push({ name: routeName, params });
+      }
     },
     goBack() {
       const idx = BOOKING_STEPS.indexOf(this.currentStep);
       if (idx > 0) {
         const prev = BOOKING_STEPS[idx - 1];
-        this.$router.push({ name: `booking-${prev}`, params: { psychologistSlug: this.psychologistSlug } });
+        const params: Record<string, string> = { psychologistSlug: this.psychologistSlug };
+        if (this.editToken) {
+          params.editToken = this.editToken;
+        }
+        this.$router.push({ name: `booking-${prev}`, params });
       }
+    },
+    goHome() {
+      this.$router.push({ name: "home" });
+    },
+    onAppointmentCreated(data: any) {
+      this.$router.push({
+        name: `booking-success`,
+        params: { psychologistSlug: this.psychologistSlug, editToken: data.edit_token },
+      });
     },
   },
 });

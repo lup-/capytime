@@ -322,3 +322,88 @@ async def create_calendar_event(
     if response.status_code == 200:
         return response.json().get("id")
     return None
+
+
+async def get_calendar_event(
+    psychologist_id: str,
+    google_token: dict,
+    calendar_id: str,
+    event_id: str
+) -> dict | None:
+    """
+    Get a specific calendar event by ID.
+    Returns the event dict or None if failed.
+    """
+    encoded_calendar_id = quote(calendar_id, safe='')
+    encoded_event_id = quote(event_id, safe='')
+    response = await google_request(
+        "GET",
+        f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{encoded_event_id}",
+        psychologist_id,
+        google_token,
+    )
+    
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
+async def update_calendar_event(
+    psychologist_id: str,
+    google_token: dict,
+    calendar_id: str,
+    event_id: str,
+    summary: str | None = None,
+    description: str | None = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    attendee_email: str | None = None,
+    conference_link: str | None = None
+) -> str | None:
+    """
+    Update a calendar event.
+    Returns event ID or None if failed.
+    """
+    encoded_calendar_id = quote(calendar_id, safe='')
+    encoded_event_id = quote(event_id, safe='')
+    
+    event_data = {}
+    
+    if summary is not None:
+        event_data["summary"] = summary
+    if description is not None:
+        event_data["description"] = description
+    if start_time is not None:
+        event_data["start"] = {
+            "dateTime": start_time.isoformat(),
+            "timeZone": "UTC",
+        }
+    if end_time is not None:
+        event_data["end"] = {
+            "dateTime": end_time.isoformat(),
+            "timeZone": "UTC",
+        }
+    if attendee_email is not None:
+        event_data["attendees"] = [{"email": attendee_email}]
+    if conference_link is not None:
+        event_data["conferenceData"] = {
+            "entryPoints": [
+                {
+                    "entryPointType": "video",
+                    "uri": conference_link,
+                    "label": "Video Conference"
+                }
+            ]
+        }
+    
+    response = await google_request(
+        "PATCH",
+        f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{encoded_event_id}",
+        psychologist_id,
+        google_token,
+        json=event_data,
+    )
+    
+    if response.status_code == 200:
+        return response.json().get("id")
+    return None

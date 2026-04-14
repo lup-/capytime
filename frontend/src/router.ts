@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import IndexView from "./views/IndexView.vue";
 import OnboardingView from "./views/OnboardingView.vue";
 import ClientBookingView from "./views/ClientBookingView.vue";
+import BookingSuccessView from "./views/BookingSuccessView.vue";
 import PsychologistProfileView from "./views/PsychologistProfileView.vue";
 import ScheduleView from "./views/ScheduleView.vue";
 import NotFoundView from "./views/NotFoundView.vue";
@@ -28,12 +29,41 @@ const bookingSteps: RouteRecordRaw[] = [
     path: "/booking/:psychologistSlug",
     name: "booking",
     component: ClientBookingView,
+    props: true,
   },
-  ...(["format", "slot", "contact", "success"] as const).map((step) => ({
-    path: `/booking/:psychologistSlug/${step}`,
-    name: `booking-${step}`,
+  {
+    path: "/booking/:psychologistSlug/event/:editToken/success",
+    name: "booking-success",
+    component: BookingSuccessView,
+    props: true,
+  },
+  {
+    path: "/booking/:psychologistSlug/event/:editToken",
+    name: "booking-edit",
     component: ClientBookingView,
-  })),
+    props: true,
+    redirect: (to) => {
+      return { name: "booking-format", params: { psychologistSlug: to.params.psychologistSlug, editToken: to.params.editToken } };
+    },
+  },
+  {
+    path: "/booking/:psychologistSlug/:editToken?/format",
+    name: "booking-format",
+    component: ClientBookingView,
+    props: true,
+  },
+  {
+    path: "/booking/:psychologistSlug/:editToken?/slot",
+    name: "booking-slot",
+    component: ClientBookingView,
+    props: true,
+  },
+  {
+    path: "/booking/:psychologistSlug/:editToken?/contact",
+    name: "booking-contact",
+    component: ClientBookingView,
+    props: true,
+  },
 ];
 
 const routes: RouteRecordRaw[] = [
@@ -42,10 +72,6 @@ const routes: RouteRecordRaw[] = [
   ...bookingSteps,
   { path: "/profile/:slug", name: "profile", component: PsychologistProfileView },
   { path: "/schedule", name: "schedule", component: ScheduleView },
-  {
-    path: "/oauth/google/callback",
-    redirect: (to) => ({ name: "onboarding-calendar", query: to.query }),
-  },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 

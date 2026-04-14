@@ -85,7 +85,7 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentResponse(BaseModel):
-    id: str
+    edit_token: Optional[str] = None
     psychologist_id: str
     client_name: str
     client_email: Optional[EmailStr]
@@ -99,6 +99,16 @@ class AppointmentResponse(BaseModel):
 class AppointmentListRequest(BaseModel):
     psychologist_id: str
     date: str
+
+
+class AppointmentRescheduleRequest(BaseModel):
+    edit_token: str
+    datetime: str
+    client_name: Optional[str] = None
+    client_email: Optional[EmailStr] = None
+    client_phone: Optional[str] = None
+    notes: Optional[str] = None
+    format: Optional[str] = None
 
 
 class OAuthCallbackRequest(BaseModel):

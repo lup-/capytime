@@ -1,11 +1,11 @@
 <template>
+  <p class="text-sm font-medium text-foreground mb-3 mt-12">
+    Превью страницы записи
+  </p>
   <div
     v-if="store.firstName"
     class="rounded-xl border border-border p-4"
   >
-    <p class="text-xs text-muted-foreground mb-2">
-      Превью страницы записи
-    </p>
     <template v-if="step === 'online' || step === 'offline'">
       <UserBooking
         :psychologist="store.psychologist"

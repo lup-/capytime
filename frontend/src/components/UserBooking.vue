@@ -247,101 +247,13 @@
         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors w-full h-11"
         :class="canSubmit ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'"
         :disabled="!canSubmit"
-        @click="goToStep('success')"
+        @click="createAppointment"
       >
-        Записаться
+        {{ submitButtonText }}
       </button>
     </div>
 
-    <!-- Успешная запись -->
-    <div
-      v-else-if="step === 'success'"
-      class="space-y-6"
-    >
-      <h2 class="text-2xl font-bold text-foreground text-center">
-        Вы записаны ✓
-      </h2>
-      <p class="text-muted-foreground text-center text-sm">
-        Информация о встрече направлена на почту.
-      </p>
-      <div class="rounded-xl border border-border p-4 space-y-2">
-        <p
-          v-if="selectedDate"
-          class="font-medium text-foreground"
-        >
-          {{ selectedDate.getDate() }} {{ monthName(selectedDate).toLowerCase() }},
-          {{ fullDayName(selectedDate).toLowerCase() }}
-        </p>
-        <p class="text-foreground">
-          {{ selectedTime }} (1 час)
-        </p>
-        <p class="text-sm text-muted-foreground">
-          {{ format === 'online' ? 'Онлайн' : 'Очно' }}
-        </p>
-        <p v-if="priceText" class="text-foreground">
-          {{ priceText }}
-        </p>
-        <div
-          v-if="format === 'online' && psychologist.videoLink"
-          class="flex items-start gap-2 flex-col"
-        >
-          <span class="text-sm text-muted-foreground">Ссылка на встречу:</span>
-          <div class="flex gap-2 w-full items-center">
-            <a
-              :href="psychologist.videoLink"
-              target="_blank"
-              class="text-primary text-sm hover:underline"
-            >
-              {{ psychologist.videoLink }}
-            </a>
-            <button
-              type="button"
-              class="text-muted-foreground hover:text-foreground"
-              @click="copyVideoLink"
-            >
-              <Copy class="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        <p
-          v-else-if="format === 'offline' && psychologist.offlineAddress"
-          class="text-sm text-muted-foreground"
-        >
-          {{ psychologist.offlineAddress }}
-        </p>
-      </div>
-      <div class="flex gap-2">
-        <a
-          :href="yandexCalendarUrl"
-          target="_blank"
-          class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
-        >
-          Добавить в Яндекс.Календарь
-        </a>
-        <a
-          :href="googleCalendarUrl"
-          target="_blank"
-          class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
-        >
-          Добавить в Google&nbsp;Календарь
-        </a>
-      </div>
-      <a
-        :href="icsDownloadUrl"
-        download="appointment.ics"
-        class="block text-xs text-muted-foreground text-center hover:text-foreground"
-      >
-        Скачать .ics файл
-      </a>
-      <button
-        type="button"
-        class="block text-sm text-primary hover:underline mx-auto"
-        @click="resetBooking"
-      >
-        Записаться заново
-      </button>
     </div>
-  </div>
 </template>
 
 <script lang="ts">
@@ -351,14 +263,12 @@ import PsychologistCard from "@/components/PsychologistCard.vue";
 import type { Psychologist } from "@/lib/types";
 import { getTimezones, getLocalTimezone } from "@/lib/utils";
 import { useErrorStore } from "@/stores/error";
-import { Copy } from "lucide-vue-next";
 
 export default defineComponent({
   name: "UserBooking",
   components: {
     Toggle,
     PsychologistCard,
-    Copy,
   },
   props: {
     psychologist: {
@@ -366,7 +276,7 @@ export default defineComponent({
       required: true,
     },
     step: {
-      type: String as () => "format" | "slot" | "contact" | "success",
+      type: String as () => "format" | "slot" | "contact",
       default: "format",
     },
     inputFormat: {
@@ -377,8 +287,12 @@ export default defineComponent({
       type: Boolean,
       default: true,
     },
+    editToken: {
+      type: String,
+      default: null,
+    },
   },
-  emits: ["update:step"],
+  emits: ["update:step", "appointment-created"],
   data() {
     return {
       format: "online" as "online" | "offline",
@@ -408,15 +322,6 @@ export default defineComponent({
         "Декабрь",
       ] as string[],
       dayNames: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"] as string[],
-      fullDayNames: [
-        "Воскресенье",
-        "Понедельник",
-        "Вторник",
-        "Среда",
-        "Четверг",
-        "Пятница",
-        "Суббота",
-      ] as string[],
       isDraggingDays: false,
       daysDragStartX: 0,
       daysDragScrollLeft: 0,
@@ -424,6 +329,9 @@ export default defineComponent({
     };
   },
   computed: {
+    isEditMode(): boolean {
+      return !!this.editToken;
+    },
     hasBothFormats(): boolean {
       return !!(this.psychologist?.online?.enabled && this.psychologist?.offline?.enabled);
     },
@@ -450,141 +358,15 @@ export default defineComponent({
     canSubmit(): boolean {
       return !!(this.clientName && this.agreed);
     },
+    submitButtonText(): string {
+      return this.isEditMode ? "Перенести" : "Записаться";
+    },
+
     hasAvailableDays(): boolean {
       return this.days.some(day => day.available);
     },
-    priceText(): string {
-      const format = this.format === "online" 
-        ? this.psychologist?.online 
-        : this.psychologist?.offline;
-      if (format?.price) {
-        const price = parseInt(format.price);
-        const duration = format.slotDuration || 60;
-        const totalPrice = (price * duration) / 60;
-        return `${totalPrice} ₽`;
-      }
-      return "";
-    },
-    icsDownloadUrl(): string {
-      if (!this.selectedDate || !this.selectedTime) return "#";
-      const [hours, minutes] = this.selectedTime.split(":");
-      const startDate = new Date(this.selectedDate);
-      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setHours(endDate.getHours() + 1);
-      
-      const formatDate = (d: Date) => {
-        return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      };
-      
-      const start = formatDate(startDate);
-      const end = formatDate(endDate);
-      const now = formatDate(new Date());
-      
-      let description = "Консультация с психологом";
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        description += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
-      }
-      
-      const ics = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//CapyTime//Booking//RU
-BEGIN:VEVENT
-UID:${Date.now()}@capytime
-DTSTAMP:${now}
-DTSTART:${start}
-DTEND:${end}
-SUMMARY:Психолог
-DESCRIPTION:${description}
-END:VEVENT
-END:VCALENDAR`;
-      
-      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-      return URL.createObjectURL(blob);
-    },
-    yandexCalendarUrl(): string {
-      if (!this.selectedDate || !this.selectedTime) return "#";
-      const [hours, minutes] = this.selectedTime.split(":");
-      const startDate = new Date(this.selectedDate);
-      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setHours(endDate.getHours() + 1);
-      
-      const formatDateLocal = (d: Date) => {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const h = String(d.getHours()).padStart(2, "0");
-        const m = String(d.getMinutes()).padStart(2, "0");
-        const s = String(d.getSeconds()).padStart(2, "0");
-        return `${year}${month}${day}T${h}${m}${s}`;
-      };
-      
-      const title = "Психолог";
-      let desc = "Консультация с психологом";
-      let place = "";
-      
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
-      } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
-        place = this.psychologist.offlineAddress;
-      }
-      
-      const params = new URLSearchParams({
-        name: title,
-        description: desc,
-        startTs: formatDateLocal(startDate),
-        endTs: formatDateLocal(endDate),
-      });
-      
-      if (place) {
-        params.append("location", place);
-      }
-      
-      return `https://calendar.yandex.ru/event?${params.toString()}`;
-    },
-    googleCalendarUrl(): string {
-      if (!this.selectedDate || !this.selectedTime) return "#";
-      const [hours, minutes] = this.selectedTime.split(":");
-      const startDate = new Date(this.selectedDate);
-      startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setHours(endDate.getHours() + 1);
-      
-      const formatDate = (d: Date) => {
-        return d.toISOString().replace(/-/g, "").replace(/:/g, "");
-      };
-      
-      const title = "Психолог";
-      let desc = "Консультация с психологом";
-      let location = "";
-      
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
-      } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
-        location = this.psychologist.offlineAddress;
-      }
-      
-      const params = new URLSearchParams({
-        action: "TEMPLATE",
-        text: title,
-        dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
-        details: desc,
-      });
-      
-      if (location) {
-        params.append("location", location);
-      }
-      
-      return `https://calendar.google.com/calendar/render?${params.toString()}`;
-    },
   },
   watch: {
-    step(val) {
-      if (val === "success") {
-        this.loadFromStorage();
-      }
-    },
     inputFormat(val: "online" | "offline" | undefined) {
       if (val !== undefined) {
         this.format = val;
@@ -609,11 +391,13 @@ END:VCALENDAR`;
   created() {
     this.timezones = getTimezones();
     this.clientTimezone = getLocalTimezone();
-    this.loadFromStorage();
+    if (this.isEditMode) {
+      this.loadExistingAppointment();
+    }
     if (this.psychologist) {
       if (this.inputFormat !== undefined) {
         this.format = this.inputFormat;
-      } else if (this.singleFormat) {
+      } else if (this.singleFormat && !this.isEditMode) {
         this.format = this.singleFormat;
         this.$emit("update:step", "slot");
       }
@@ -693,12 +477,8 @@ END:VCALENDAR`;
       this.selectedDate = null;
       this.selectedTime = null;
     },
-    goToStep(step: "format" | "slot" | "contact" | "success") {
-      if (step === "success" && this.showStepButton) {
-        this.createAppointment();
-      } else {
-        this.$emit("update:step", step);
-      }
+    goToStep(step: "format" | "slot" | "contact") {
+      this.$emit("update:step", step);
     },
     async createAppointment() {
       if (!this.selectedDate || !this.selectedTime || !this.psychologist) return;
@@ -709,18 +489,29 @@ END:VCALENDAR`;
       const [hours, minutes] = this.selectedTime.split(":");
       const datetime = `${dateStr}T${hours}:${minutes}:00${offset}`;
       
-      const requestBody: Record<string, unknown> = {
-        psychologist_id: this.psychologist.id,
-        client_name: this.clientName,
-        datetime: datetime,
-      };
-      
-      if (this.clientEmail) {
-        requestBody.client_email = this.clientEmail;
-      }
-      
       try {
-        const response = await fetch("/api/appointments/", {
+        let url = "/api/appointments/";
+        let requestBody: Record<string, unknown> = {
+          psychologist_id: this.psychologist.id,
+          client_name: this.clientName,
+          datetime: datetime,
+        };
+        
+        if (this.clientEmail) {
+          requestBody.client_email = this.clientEmail;
+        }
+        
+        if (this.isEditMode && this.editToken) {
+          url = "/api/appointments/reschedule";
+          requestBody = {
+            edit_token: this.editToken,
+            datetime: datetime,
+            client_name: this.clientName,
+            client_email: this.clientEmail || undefined,
+          };
+        }
+        
+        const response = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -742,11 +533,32 @@ END:VCALENDAR`;
           return;
         }
         
-        this.$emit("update:step", "success");
-        this.saveToStorage();
+        const data = await response.json();
+        this.$emit("appointment-created", data);
       } catch (error) {
         useErrorStore().showError("Не удалось создать запись");
         console.error("Error creating appointment:", error);
+      }
+    },
+    async loadExistingAppointment() {
+      if (!this.editToken) return;
+      
+      try {
+        const response = await fetch(
+          `/api/appointments/event/${encodeURIComponent(this.editToken)}`
+        );
+        
+        if (!response.ok) {
+          useErrorStore().showError("Не удалось загрузить данные записи");
+          return;
+        }
+        
+        const data = await response.json();
+        this.clientName = data.client_name || "";
+        this.clientEmail = data.client_email || "";
+      } catch (error) {
+        useErrorStore().showError("Не удалось загрузить данные записи");
+        console.error("Error loading existing appointment:", error);
       }
     },
     selectDate(date: Date) {
@@ -767,12 +579,6 @@ END:VCALENDAR`;
     },
     shortDayName(date: Date): string {
       return this.dayNames[date.getDay()];
-    },
-    fullDayName(date: Date): string {
-      return this.fullDayNames[date.getDay()];
-    },
-    monthName(date: Date): string {
-      return this.months[date.getMonth()];
     },
     dayButtonClasses(date: Date, available: boolean) {
       const isSelected = this.selectedDate && this.selectedDate.toDateString() === date.toDateString();
@@ -844,51 +650,6 @@ END:VCALENDAR`;
       window.removeEventListener("touchmove", this.onDaysTouchMove);
       window.removeEventListener("touchend", this.onDaysTouchEnd);
       window.removeEventListener("touchcancel", this.onDaysTouchEnd);
-    },
-    addToGoogleCalendar() {
-      window.open(this.googleCalendarUrl, "_blank");
-    },
-    saveToStorage() {
-      const data = {
-        format: this.format,
-        selectedDate: this.selectedDate ? this.selectedDate.toISOString() : null,
-        selectedTime: this.selectedTime,
-        psychologistId: this.psychologist?.id,
-      };
-      localStorage.setItem("booking_success_data", JSON.stringify(data));
-    },
-    loadFromStorage() {
-      if (this.step !== "success") return;
-      const stored = localStorage.getItem("booking_success_data");
-      if (!stored) return;
-      try {
-        const data = JSON.parse(stored);
-        if (data.psychologistId === this.psychologist?.id) {
-          if (data.selectedDate) {
-            this.selectedDate = new Date(data.selectedDate);
-          }
-          if (data.selectedTime) {
-            this.selectedTime = data.selectedTime;
-          }
-          if (data.format) {
-            this.format = data.format;
-          }
-        }
-      } catch {
-        // ignore parse errors
-      }
-    },
-    resetBooking() {
-      localStorage.removeItem("booking_success_data");
-      this.selectedDate = null;
-      this.selectedTime = null;
-      this.$emit("update:step", "format");
-    },
-    copyVideoLink() {
-      if (this.psychologist?.videoLink) {
-        navigator.clipboard.writeText(this.psychologist.videoLink);
-        useErrorStore().showSuccess("Скопировано!");
-      }
     },
   },
 });

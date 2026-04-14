@@ -5,8 +5,9 @@ from bson import ObjectId
 from zoneinfo import ZoneInfo
 import asyncio
 from app.database import get_db
-from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentListRequest
+from app.schemas import AppointmentCreate, AppointmentResponse, AppointmentListRequest, AppointmentRescheduleRequest
 from app.email import send_successful_booking_to_user, send_successful_booking_to_psychologist, AppointmentData
+from app.auth import generate_edit_token, decode_edit_token
 
 DEFAULT_TIMEZONE = "Europe/Moscow (GMT+03:00)"
 
@@ -93,8 +94,13 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
             conference_link=conference_link
         )
 
+    if not event_id:
+        raise HTTPException(status_code=500, detail="Failed to create calendar event")
+    
+    edit_token = generate_edit_token(event_id, str(obj_id), data.client_email)
+
     appointment = {
-        "id": event_id,
+        "edit_token": edit_token,
         "psychologist_id": data.psychologist_id,
         "client_name": data.client_name,
         "client_email": data.client_email,
@@ -118,6 +124,7 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
         notes=data.notes,
         video_link=conference_link if data.format == "online" else None,
         offline_address=psychologist.get("offlineAddress") if data.format == "offline" else None,
+        edit_token=edit_token,
     )
 
     try:
@@ -130,6 +137,144 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
         pass
 
     return AppointmentResponse(**appointment)
+
+
+@router.get("/event/{edit_token}", response_model=AppointmentResponse)
+async def get_appointment_by_event(edit_token: str, db=Depends(get_db)):
+    token_data = decode_edit_token(edit_token)
+    if not token_data:
+        raise HTTPException(status_code=400, detail="Invalid edit token")
+    
+    event_id = token_data.get("event_id")
+    psychologist_id = token_data.get("psychologist_id")
+    client_email = token_data.get("client_email")
+    
+    try:
+        obj_id = ObjectId(psychologist_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid psychologist ID")
+    
+    psychologist = await db.psychologists.find_one({"_id": obj_id})
+    if not psychologist:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    
+    google_token = psychologist.get("googleToken")
+    google_calendar = psychologist.get("googleCalendar")
+    
+    if not google_token or not google_calendar:
+        raise HTTPException(status_code=404, detail="Calendar not configured")
+    
+    google_token_dict = {
+        "accessToken": google_token.get("accessToken"),
+        "refreshToken": google_token.get("refreshToken"),
+    }
+    calendar_id = google_calendar.get("calendarId", "primary")
+    
+    from app import google_client
+    event_data = await google_client.get_calendar_event(
+        psychologist_id=psychologist_id,
+        google_token=google_token_dict,
+        calendar_id=calendar_id,
+        event_id=event_id,
+    )
+    
+    if not event_data:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    start = event_data.get("start", {})
+    event_datetime = start.get("dateTime")
+    client_name = ""
+    email = ""
+    if event_data.get("description"):
+        desc_lines = event_data.get("description", "").split("\n")
+        if desc_lines:
+            first_line = desc_lines[0].replace("Клиент: ", "")
+            client_name = first_line.strip()
+        for line in desc_lines:
+            if line.startswith("Почта:"):
+                email = line.replace("Почта: ", "").strip()
+    
+    return AppointmentResponse(
+        edit_token=edit_token,
+        psychologist_id=psychologist_id,
+        client_name=client_name,
+        client_email=email if email else (client_email or None),
+        client_phone=None,
+        datetime=event_datetime,
+        notes=None,
+        video_link=None,
+        offline_address=psychologist.get("offlineAddress"),
+    )
+
+
+@router.post("/reschedule", response_model=AppointmentResponse)
+async def reschedule_appointment(data: AppointmentRescheduleRequest, db=Depends(get_db)):
+    token_data = decode_edit_token(data.edit_token)
+    if not token_data:
+        raise HTTPException(status_code=400, detail="Invalid edit token")
+    
+    event_id = token_data.get("event_id")
+    psychologist_id = token_data.get("psychologist_id")
+    token_client_email = token_data.get("client_email")
+    
+    try:
+        obj_id = ObjectId(psychologist_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid psychologist ID")
+    
+    psychologist = await db.psychologists.find_one({"_id": obj_id})
+    if not psychologist:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    
+    google_token = psychologist.get("googleToken")
+    google_calendar = psychologist.get("googleCalendar")
+    
+    if not google_token or not google_calendar:
+        raise HTTPException(status_code=404, detail="Calendar not configured")
+    
+    google_token_dict = {
+        "accessToken": google_token.get("accessToken"),
+        "refreshToken": google_token.get("refreshToken"),
+    }
+    calendar_id = google_calendar.get("calendarId", "primary")
+    
+    client_name = data.client_name or ""
+    client_email = data.client_email or token_client_email
+    
+    from datetime import datetime as dt
+    dt_with_tz = dt.fromisoformat(data.datetime)
+    start_time = dt_with_tz.astimezone(ZoneInfo("UTC"))
+    end_time = start_time + timedelta(hours=1)
+    
+    summary = f"Консультация с {client_name}"
+    description = f"Клиент: {client_name}"
+    if client_email:
+        description += f"\nПочта: {client_email}"
+    
+    from app import google_client
+    await google_client.update_calendar_event(
+        psychologist_id=psychologist_id,
+        google_token=google_token_dict,
+        calendar_id=calendar_id,
+        event_id=event_id,
+        summary=summary,
+        description=description,
+        start_time=start_time,
+        end_time=end_time,
+        attendee_email=client_email if client_email else None,
+    )
+    
+    return AppointmentResponse(
+        edit_token=data.edit_token,
+        psychologist_id=psychologist_id,
+        client_name=client_name,
+        client_email=client_email,
+        client_phone=data.client_phone,
+        datetime=data.datetime,
+        notes=data.notes,
+        video_link=None,
+        offline_address=psychologist.get("offlineAddress"),
+    )
 
 
 @router.post("/list", response_model=List[AppointmentResponse])
@@ -151,7 +296,6 @@ async def list_appointments(data: AppointmentListRequest, db=Depends(get_db)):
     async for appointment in cursor:
         psychologist = await db.psychologists.find_one({"_id": ObjectId(appointment["psychologist_id"])})
         appointments.append(AppointmentResponse(
-            id=str(appointment["_id"]),
             psychologist_id=appointment["psychologist_id"],
             client_name=appointment["client_name"],
             client_email=appointment.get("client_email"),

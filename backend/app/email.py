@@ -42,6 +42,7 @@ class AppointmentData:
     notes: Optional[str] = None
     video_link: Optional[str] = None
     offline_address: Optional[str] = None
+    edit_token: Optional[str] = None
 
 
 def refresh_sendsay_session() -> Optional[str]:
@@ -146,9 +147,14 @@ def send_register_congrats_email(to: str, first_name: str, psychologist_slug: st
 def send_successful_booking_to_user(to: str, appointment: AppointmentData) -> dict:
     subject = "Запись на консультацию подтверждена"
     formatted_dt = format_datetime(appointment.datetime)
+    reschedule_link = ""
+    if appointment.edit_token and appointment.psychologist_slug:
+        reschedule_url = f"{settings.FRONTEND_URL}/booking/{appointment.psychologist_slug}/event/{appointment.edit_token}"
+        reschedule_link = f'<p><a href="{reschedule_url}">Перенести или отменить запись</a></p>'
     text = f"""
     <h1>Здравствуйте, {appointment.client_name}!</h1>
     <p>Ваша запись на консультацию к психологу {appointment.psychologist_name} на {formatted_dt} подтверждена.</p>
+    {reschedule_link}
     {"<p><strong>Ссылка на видеовстречу:</strong> " + appointment.video_link + "</p>" if appointment.video_link else ""}
     {"<p><strong>Адрес:</strong> " + appointment.offline_address + "</p>" if appointment.offline_address else ""}
     <p>С уважением,<br>Команда CapyTime</p>
@@ -159,11 +165,16 @@ def send_successful_booking_to_user(to: str, appointment: AppointmentData) -> di
 def send_successful_booking_to_psychologist(to: str, appointment: AppointmentData) -> dict:
     subject = "Новая запись на консультацию"
     formatted_dt = format_datetime(appointment.datetime)
+    reschedule_link = ""
+    if appointment.edit_token and appointment.psychologist_slug:
+        reschedule_url = f"{settings.FRONTEND_URL}/booking/{appointment.psychologist_slug}/event/{appointment.edit_token}"
+        reschedule_link = f'<p><a href="{reschedule_url}">Перенести или отменить запись</a></p>'
     text = f"""
     <h1>Здравствуйте, {appointment.psychologist_name}!</h1>
     <p>У вас новая запись на консультацию.</p>
     <p><strong>Клиент:</strong> {appointment.client_name}</p>
     <p><strong>Дата и время:</strong> {formatted_dt}</p>
+    {reschedule_link}
     {"<p><strong>Заметки:</strong> " + appointment.notes + "</p>" if appointment.notes else ""}
     <p>С уважением,<br>Команда CapyTime</p>
     """
