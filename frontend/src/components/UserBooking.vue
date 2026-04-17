@@ -234,10 +234,10 @@
       <div class="flex items-center justify-between gap-3">
         <span class="text-sm text-foreground">
           Согласие на обработку
-          <a
-            href="#"
+          <RouterLink
+            to="/personal-data-processing"
             class="text-primary hover:underline"
-          >персональных данных</a>
+          >персональных данных</RouterLink>
         </span>
         <Toggle v-model="agreed" />
       </div>
@@ -258,6 +258,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { RouterLink } from "vue-router";
 import Toggle from "@/components/ui/Toggle.vue";
 import PsychologistCard from "@/components/PsychologistCard.vue";
 import type { Psychologist } from "@/lib/types";
@@ -267,6 +268,7 @@ import { useErrorStore } from "@/stores/error";
 export default defineComponent({
   name: "UserBooking",
   components: {
+    RouterLink,
     Toggle,
     PsychologistCard,
   },

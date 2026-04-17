@@ -25,11 +25,11 @@
           </p>
         </div>
         <div class="max-w-md mx-auto">
-          <div class="w-full rounded-xl border border-border shadow-sm bg-secondary h-64 flex items-center justify-center">
-            <span class="text-sm text-muted-foreground">
-              Здесь будет предпросмотр календаря записи
-            </span>
-          </div>
+          <img
+            :src="calendarPreview"
+            alt="Предпросмотр календаря записи"
+            class="w-full rounded-xl border border-border shadow-sm"
+          >
         </div>
       </section>
 
@@ -44,15 +44,16 @@
           >
             Настроить сервис
           </button>
+          <p class="text-xs text-muted-foreground">
+            Нажимая на кнопку, вы соглашаетесь с
+            <RouterLink to="/terms-of-service" class="text-primary hover:underline">условиями использования сервиса</RouterLink>
+          </p>
           <div class="flex items-center justify-between gap-3">
-            <a href="#" class="text-xs text-primary hover:underline">
+            <RouterLink to="/personal-data-processing" class="text-xs text-primary hover:underline">
               Согласие на обработку персональных данных
-            </a>
+            </RouterLink>
             <Toggle v-model="agreed" />
           </div>
-          <p class="text-xs text-muted-foreground">
-            Нажимая на кнопку, вы соглашаетесь с условиями использования сервиса
-          </p>
         </div>
       </section>
 
@@ -80,37 +81,43 @@
         </div>
       </section>
 
-      <!-- Security -->
-      <section class="container mx-auto px-4 py-16">
-        <div class="max-w-2xl text-left">
-          <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-6">
-            Безопасность данных
-          </h2>
-          <p class="mb-4">
-            CapyTime старательно выполняет требования законодательства и заботится о вашей безопасности. Мы храним данные специалистов и клиентов:
-          </p>
-          <ul class="list-disc list-inside space-y-2 mb-4 text-foreground marker:text-primary">
-            <li>временно, пока не пройдет встреча;</li>
-            <li>на российских серверах с суперзащитой от утечек;</li>
-            <li>обезличенно, чтобы никто не мог сопоставить имя клиента и его запись к специалисту.</li>
-          </ul>
-        </div>
-      </section>
-    </main>
+       <!-- Security -->
+       <section class="container mx-auto px-4 py-16">
+         <div class="max-w-2xl text-left">
+           <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-6">
+             Безопасность данных
+           </h2>
+           <p class="mb-4">
+             CapyTime старательно выполняет требования законодательства и заботится о вашей безопасности. Мы храним данные специалистов:
+           </p>
+           <ul class="list-disc list-inside space-y-2 mb-4 text-foreground marker:text-primary">
+             <li>только те публичные данные, которые специалисты указали сами (страницы специалистов);</li>
+             <li>на российских серверах с суперзащитой от утечек;</li>
+           </ul>
+           <p class="mb-4">
+             CapyTime не хранит данные о клиентах и записях. Вся информация о записи размещается в личных календарях специалистов.
+           </p>
+         </div>
+       </section>
 
-    <Footer />
+     </main>
+
+     <Footer />
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { RouterLink } from "vue-router";
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
 import Toggle from "@/components/ui/Toggle.vue";
+import calendarPreview from "@/assets/calendar-preview.png";
 
 export default defineComponent({
   name: "IndexView",
   components: {
+    RouterLink,
     Header,
     Footer,
     Toggle,
@@ -118,6 +125,7 @@ export default defineComponent({
   data() {
     return {
       agreed: false,
+      calendarPreview,
     };
   },
   methods: {

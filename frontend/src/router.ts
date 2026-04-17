@@ -6,6 +6,7 @@ import BookingSuccessView from "./views/BookingSuccessView.vue";
 import PsychologistProfileView from "./views/PsychologistProfileView.vue";
 import ScheduleView from "./views/ScheduleView.vue";
 import NotFoundView from "./views/NotFoundView.vue";
+import TextPageView from "./views/TextPageView.vue";
 import { ALL_STEPS } from "./stores/onboarding";
 
 const onboardingSteps: RouteRecordRaw[] = [
@@ -72,6 +73,9 @@ const routes: RouteRecordRaw[] = [
   ...bookingSteps,
   { path: "/profile/:slug", name: "profile", component: PsychologistProfileView },
   { path: "/schedule", name: "schedule", component: ScheduleView },
+  { path: "/privacy-policy", name: "privacy-policy", component: TextPageView, props: { title: "Политика конфиденциальности", pageKey: "privacy-policy" } },
+  { path: "/personal-data-processing", name: "personal-data-processing", component: TextPageView, props: { title: "Правила обработки персональных данных", pageKey: "personal-data-processing" } },
+  { path: "/terms-of-service", name: "terms-of-service", component: TextPageView, props: { title: "Правила пользования сервисом", pageKey: "terms-of-service" } },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 
