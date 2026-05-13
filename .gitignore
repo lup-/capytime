@@ -5,3 +5,4 @@ uploads
 !.gitkeep
 __pycache__
 google_client_secret.json
+yandex_telemost_cookies.json
