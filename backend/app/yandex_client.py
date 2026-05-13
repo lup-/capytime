@@ -230,6 +230,11 @@ async def yandex_telemost_auth() -> bool:
                         if login_menu_item:
                             await login_menu_item.click()
                             await page.wait_for_timeout(1000)
+                            
+                            login_field = await find_multiple_selectors(page, [
+                                'input[aria-label="Логин или email"]',
+                                'input[aria-label="Username or email"]'
+                            ])
 
             if not login_field:
                 print("Поле для ввода логина не найдено на странице")
