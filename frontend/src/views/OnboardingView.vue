@@ -689,7 +689,7 @@ export default defineComponent({
     },
     isVideoStepValid(): boolean {
       if (this.store.videoConferenceMode === "per_booking") {
-        return this.store.yandexTelemostConnected;
+        return true;
       }
       return !!this.store.videoLink;
     },
