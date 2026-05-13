@@ -178,7 +178,7 @@ async def google_callback(code: str = Query(...), state: str = Query(...), db=De
         return RedirectResponse(error_url, status_code=301)
     
     psychologist_id_from_state = state_data.get("psychologist_id", "")
-    return_url = state_data.get("return_url", "/")
+    return_url = state_data.get("return_url", "/onboarding/calendar")
     
     client_id = settings.GOOGLE_CLIENT_ID
     client_secret = settings.GOOGLE_CLIENT_SECRET
@@ -237,10 +237,15 @@ async def google_callback(code: str = Query(...), state: str = Query(...), db=De
         "expiresIn": token_data.get("expires_in"),
         "scope": token_data.get("scope"),
     }
-    temp_calendar_id = await google_client.get_or_create_calendar(
-        user_email, google_token_data
-    )
-    calendar_id = temp_calendar_id
+    
+    try:
+        temp_calendar_id = await google_client.get_or_create_calendar(
+            user_email, google_token_data
+        )
+        calendar_id = temp_calendar_id
+    except Exception as e:
+        error_url = f"{return_url}?error=insufficient_scopes"
+        return RedirectResponse(error_url, status_code=301)
     
     existing = None
     if psychologist_id_from_state:

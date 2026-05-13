@@ -13,7 +13,7 @@
             Правила пользования сервисом
           </RouterLink>
         </div>
-        <p>© {{ currentYear }} CapyTime</p>
+        <p>©&nbsp;{{ currentYear }}&nbsp;CapyTime</p>
       </div>
     </div>
   </footer>

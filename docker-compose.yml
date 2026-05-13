@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build: ./backend
@@ -8,12 +6,12 @@ services:
       - "8006:8000"
       - "8678:5678"
       - "8679:5679"
+      - "6080:6080"
     depends_on:
       - mongo
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
-    command: python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   mongo:
     image: mongo:7

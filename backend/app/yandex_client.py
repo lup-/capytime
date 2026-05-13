@@ -1,5 +1,7 @@
 import httpx
 import asyncio
+import json
+from pathlib import Path
 from bson import ObjectId
 from fastapi import HTTPException
 from app.config import settings
@@ -133,48 +135,245 @@ async def yandex_request(
     return response
 
 
-async def create_conference(
-    yandex_token: dict,
-    psychologist_id: str,
-    waiting_room_level: str = "PUBLIC",
-    title: str | None = None,
-    description: str | None = None
-) -> dict | None:
-    """
-    Create a Yandex Telemost conference.
+def load_telemost_cookies() -> list[dict] | None:
+    """Load saved Yandex Telemost cookies from JSON file"""
+    path = Path(settings.YANDEX_TELEMOST_COOKIES_PATH)
+    if not path.is_absolute():
+        path = Path("/app") / path
+    if not path.exists():
+        return None
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def save_telemost_cookies(cookies: list[dict]):
+    """Save Yandex Telemost cookies to JSON file"""
+    path = Path(settings.YANDEX_TELEMOST_COOKIES_PATH)
+    if not path.is_absolute():
+        path = Path("/app") / path
+    with open(path, "w") as f:
+        json.dump(cookies, f)
+
+
+async def find_multiple_selectors(page, selectors):
+    for selector in selectors:
+        element = await page.query_selector(selector)
+        if element is not None:
+            return element
     
-    Args:
-        yandex_token: Dict with accessToken
-        psychologist_id: ID of the psychologist for token refresh
-        waiting_room_level: PUBLIC, ORGANIZATION, or ADMINS
-        title: Optional title for live stream
-        description: Optional description for live stream
-    
-    Returns:
-        Dict with conference id, join_url, and optionally live_stream.watch_url
-        or None if creation failed.
-    """
-    payload = {
-        "waiting_room_level": waiting_room_level,
-    }
-    
-    if title or description:
-        payload["live_stream"] = {}
-        if title:
-            payload["live_stream"]["title"] = title
-        if description:
-            payload["live_stream"]["description"] = description
-        if not payload["live_stream"]:
-            del payload["live_stream"]
-    
-    response = await yandex_request(
-        "POST",
-        "https://cloud-api.yandex.net/v1/telemost-api/conferences",
-        yandex_token,
-        psychologist_id=psychologist_id,
-        json=payload
-    )
-    
-    if response.status_code == 201:
-        return response.json()
     return None
+
+
+async def get_next_button(page):
+    return await find_multiple_selectors(page, [
+        'button[data-testid="split-add-user-next-login"]',
+        'button[data-testid="add-user-next"]',
+        'button[data-testid="password-next"]'
+    ])
+
+
+async def yandex_telemost_auth() -> bool:
+    """
+    Yandex Telemost authentication flow using Playwright (headless mode).
+    Saves cookies to file for later use.
+    Returns True if authentication successful.
+    """
+    from playwright.async_api import async_playwright
+
+    login = settings.YANDEX_TELEMOST_LOGIN
+    password = settings.YANDEX_TELEMOST_PASSWORD
+
+    if not login:
+        print("Error: YANDEX_TELEMOST_LOGIN not set in config")
+        return False
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context()
+        page = await context.new_page()
+
+        try:
+            while True:
+                await page.goto("https://passport.yandex.ru/")
+                await page.wait_for_timeout(3000)
+
+                if "showcaptcha" in page.url:
+                    print(f"\nCAPTCHA detected!")
+                    print(f"Open http://localhost:6080/vnc_lite.html in your browser to access the VNC session.")
+                    print(f"Solve the CAPTCHA in the browser window, then press Enter...")
+                    await asyncio.to_thread(input)
+
+                    if "showcaptcha" in page.url:
+                        print("Still on CAPTCHA page, retrying...")
+                        continue
+                    break
+                else:
+                    break
+
+            # Check if login field exists, if not, might be phone input
+            login_field = await find_multiple_selectors(page, [
+                'input[aria-label="Логин или email"]',
+                'input[aria-label="Username or email"]'
+            ])
+
+            if not login_field:
+                # Maybe phone input is shown (type="tel")
+                phone_field = await page.query_selector('input[type="tel"]')
+                if phone_field:
+                    # Click "Ещё" button to show menu
+                    more_btn = await page.query_selector('button[data-testid="split-add-user-more-button"]')
+                    if more_btn:
+                        await more_btn.click()
+                        await page.wait_for_timeout(1000)
+                        # Click "Войти по логину" in the menu
+                        login_menu_item = await page.query_selector('[data-testid="menu-option-switchToLogin"]')
+                        if login_menu_item:
+                            await login_menu_item.click()
+                            await page.wait_for_timeout(1000)
+
+            if not login_field:
+                print("Поле для ввода логина не найдено на странице")
+                return False                
+                
+            await login_field.type(login)
+            
+            next_button = await get_next_button(page)
+            if not next_button:
+                print("Не найдена кнопка \"Продолжить\"")
+                return False
+            
+            await next_button.click()
+            await page.wait_for_timeout(2000)
+
+            password_field = await page.query_selector('input[type="password"]')
+            if password_field:
+                if not password:
+                    print("Error: YANDEX_TELEMOST_PASSWORD not set in config")
+                    return False
+                await password_field.type(password)
+                
+                next_button = await get_next_button(page)
+                if not next_button:
+                    print("Не найдена кнопка \"Продолжить\"")
+                    return False
+
+                await next_button.click()
+                await page.wait_for_timeout(2000)
+
+            code_field = await page.query_selector('input[data-testid="push-code-input"]')
+            if code_field:
+                code = await asyncio.to_thread(input, "Enter verification code from email/SMS: ")
+                await code_field.type(code)
+                
+                next_button = await get_next_button(page)
+                if not next_button:
+                    print("Не найдена кнопка \"Продолжить\"")
+                    return False
+                                
+                await next_button.click()
+                await page.wait_for_timeout(2000)
+
+            later_btn = await page.query_selector('button:has-text("Напомнить позже")')
+            if later_btn:
+                await later_btn.click()
+                await page.wait_for_timeout(2000)
+
+            await page.wait_for_url("**/id.yandex.ru/**", timeout=30000)
+
+            cookies = await context.cookies()
+            save_telemost_cookies(cookies)
+            print("Authentication successful, cookies saved")
+            return True
+
+        except Exception as e:
+            print(f"Authentication failed: {e}")
+            return False
+        finally:
+            await browser.close()
+
+
+async def refresh_telemost_cookies() -> bool:
+    """
+    Refresh Yandex Telemost cookies.
+    If session expired, runs full authentication flow.
+    Returns True if cookies are valid/refreshed.
+    """
+    from playwright.async_api import async_playwright
+
+    cookies = load_telemost_cookies()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+
+        # Add existing cookies if available
+        if cookies:
+            await context.add_cookies(cookies)
+
+        page = await context.new_page()
+
+        try:
+            # Navigate to id.yandex.ru to check session
+            await page.goto("https://id.yandex.ru/")
+            await page.wait_for_load_state("networkidle")
+
+            # Check if redirected to passport (session expired)
+            if "passport.yandex.ru" in page.url:
+                print("Session expired, re-authenticating...")
+                await browser.close()
+                return await yandex_telemost_auth()
+
+            # Update saved cookies
+            new_cookies = await context.cookies()
+            save_telemost_cookies(new_cookies)
+            print("Cookies refreshed successfully")
+            return True
+
+        except Exception as e:
+            print(f"Cookie refresh failed: {e}")
+            return False
+        finally:
+            await browser.close()
+
+
+async def create_conference() -> str | None:
+    """
+    Create a Yandex Telemost conference using saved user cookies.
+    Returns conference URL string or None if failed.
+    """
+    from playwright.async_api import async_playwright
+
+    cookies = load_telemost_cookies()
+    if not cookies:
+        print("Error: No saved cookies. Run authentication first.")
+        return None
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        await context.add_cookies(cookies)
+        page = await context.new_page()
+
+        try:
+            # Navigate to Telemost
+            await page.goto("https://telemost.yandex.ru/")
+            await page.wait_for_load_state("networkidle")
+
+            # Click "New Video Meeting" button
+            new_meeting_btn = await page.wait_for_selector(
+                'button:has-text("Новая видеовстреча")',
+                timeout=10000
+            )
+            await new_meeting_btn.click()
+
+            # Wait for redirect to conference page
+            await page.wait_for_url("**/telemost.yandex.ru/j/**", timeout=15000)
+            
+            conference_url = page.url
+            print(f"Conference created: {conference_url}")
+            return conference_url
+
+        except Exception as e:
+            print(f"Conference creation failed: {e}")
+            return None
+        finally:
+            await browser.close()

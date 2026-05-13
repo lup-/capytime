@@ -505,7 +505,7 @@
             />
           </div>
 
-          <div v-if="store.videoConferenceMode === 'per_booking'">
+          <!--div v-if="store.videoConferenceMode === 'per_booking'">
             <button
               type="button"
               class="flex flex-col items-center gap-2 rounded-xl border p-6 transition-colors"
@@ -538,7 +538,7 @@
             >
               Яндекс Телемост подключён
             </div>
-          </div>
+          </div-->
 
           <button
             type="button"
@@ -698,9 +698,25 @@ export default defineComponent({
     "$route.name"(): void {},
   },
   methods: {
+    getOAuthErrorMessage(errorCode: string): string {
+      const messages: Record<string, string> = {
+        invalid_state_token: "Ссылка устарела. Попробуйте подключить аккаунт заново.",
+        google_oauth_not_configured: "Вход через Google временно недоступен. Обратитесь в поддержку.",
+        yandex_oauth_not_configured: "Вход через Яндекс временно недоступен. Обратитесь в поддержку.",
+        token_exchange_failed: "Не удалось завершить авторизацию. Попробуйте ещё раз.",
+        insufficient_scopes: "Недостаточно прав доступа. Разрешите доступ к календарю и профилю.",
+        psychologist_not_found: "Ошибка при сохранении данных. Попробуйте позже.",
+        invalid_client: "Ошибка настройки OAuth. Обратитесь в поддержку.",
+        invalid_grant: "Код авторизации недействителен. Попробуйте заново.",
+        unauthorized_client: "Приложение не имеет доступа. Обратитесь в поддержку.",
+        access_denied: "Доступ запрещён. Разрешите доступ, чтобы продолжить.",
+      };
+      return messages[errorCode] || `Ошибка авторизации: ${errorCode}`;
+    },
     async handleOAuthCallback() {
       if (this.$route.query.error) {
-        useErrorStore().showError(this.$route.query.error as string);
+        const errorCode = this.$route.query.error as string;
+        useErrorStore().showError(this.getOAuthErrorMessage(errorCode));
       }
       
       if (this.$route.query.psychologist_token) {

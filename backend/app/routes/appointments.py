@@ -51,26 +51,21 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
         description += f"\nПочта: {data.client_email}"
 
     video_conference_mode = psychologist.get("videoConferenceMode", "per_booking")
-    yandex_telemost_connected = psychologist.get("yandexTelemostConnected", False)
 
-    if video_conference_mode == "per_booking" and yandex_telemost_connected:
-        yandex_token = psychologist.get("yandexToken")
-        if yandex_token:
-            from app.yandex_client import create_conference
-            
-            try:
-                conference = await create_conference(
-                    yandex_token={"accessToken": yandex_token.get("accessToken"), "refreshToken": yandex_token.get("refreshToken")},
-                    psychologist_id=str(obj_id),
-                    title=summary,
-                    description=description
-                )
-                if conference:
-                    conference_link = conference.get("join_url")
-            except Exception:
-                conference_link = None
+    if video_conference_mode == "per_booking":
+        from app.yandex_client import create_conference
+        
+        try:
+            conference_url = await create_conference()
+            if conference_url:
+                conference_link = conference_url
+        except Exception:
+            conference_link = None
     elif video_conference_mode == "single":
         conference_link = psychologist.get("videoLink")
+
+    if conference_link is not None:
+        description += f"\nВидеоконференция: {conference_link}"
 
     event_id = None
     if google_token and google_calendar:
@@ -95,7 +90,7 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
         )
 
     if not event_id:
-        raise HTTPException(status_code=500, detail="Failed to create calendar event")
+        raise HTTPException(status_code=500, detail="Ошибка создания записи в календаре")
     
     edit_token = generate_edit_token(event_id, str(obj_id), data.client_email)
 
@@ -185,6 +180,7 @@ async def get_appointment_by_event(edit_token: str, db=Depends(get_db)):
     event_datetime = start.get("dateTime")
     client_name = ""
     email = ""
+    video_link = None
     if event_data.get("description"):
         desc_lines = event_data.get("description", "").split("\n")
         if desc_lines:
@@ -193,6 +189,9 @@ async def get_appointment_by_event(edit_token: str, db=Depends(get_db)):
         for line in desc_lines:
             if line.startswith("Почта:"):
                 email = line.replace("Почта: ", "").strip()
+
+            if line.startswith("Видеоконференция:"):
+                video_link = line.replace("Видеоконференция: ", "").strip()
     
     return AppointmentResponse(
         edit_token=edit_token,
@@ -202,7 +201,7 @@ async def get_appointment_by_event(edit_token: str, db=Depends(get_db)):
         client_phone=None,
         datetime=event_datetime,
         notes=None,
-        video_link=None,
+        video_link=video_link,
         offline_address=psychologist.get("offlineAddress"),
     )
 

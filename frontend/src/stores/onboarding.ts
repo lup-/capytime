@@ -109,7 +109,7 @@ export const useOnboardingStore = defineStore("onboarding", {
       return this.steps.filter((s) => !s.hidden).map((s) => s.id);
     },
     bookingLink(): string {
-      return `capytime.ru/${this.psychologistSlug}`;
+      return `capytime.ru/booking/${this.psychologistSlug}`;
     },
     psychologistSlug(): string {
       let psychologist = useAuthStore().psychologist || {};

@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     YANDEX_CLIENT_SECRET: str = ""
     YANDEX_REDIRECT_URI: str = "http://localhost:8080/api/oauth/yandex/callback"
 
+    YANDEX_TELEMOST_LOGIN: str = ""
+    YANDEX_TELEMOST_PASSWORD: str = ""
+    YANDEX_TELEMOST_COOKIES_PATH: str = "yandex_telemost_cookies.json"
+
     SENDSAY_LOGIN: str = ""
     SENDSAY_SUBLOGIN: str = ""
     SENDSAY_PASSWORD: str = ""

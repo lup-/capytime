@@ -134,7 +134,7 @@ def send_email(to: str, subject: str, text: str) -> dict:
 
 def send_register_congrats_email(to: str, first_name: str, psychologist_slug: str) -> dict:
     subject = "Добро пожаловать в CapyTime!"
-    booking_link = f"{settings.FRONTEND_URL}/{psychologist_slug}"
+    booking_link = f"{settings.FRONTEND_URL}/booking/{psychologist_slug}"
     text = f"""
     <h1>Привет, {first_name}!</h1>
     <p>Рады приветствовать вас на платформе CapyTime. Теперь клиенты могут записываться к вам на консультации.</p>
