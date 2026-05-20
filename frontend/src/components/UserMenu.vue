@@ -22,22 +22,23 @@
         v-if="showMenu"
         class="absolute right-0 mt-2 w-48 rounded-md border border-border bg-background shadow-lg"
       >
-        <!--RouterLink
-          :to="`/profile/${authStore.slug}`"
-          class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground first:rounded-t-md last:rounded-b-md"
+        <RouterLink
+          to="/onboarding"
+          class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground first:rounded-t-md"
           @click="showMenu = false"
         >
-          <User class="h-4 w-4" />
-          Профиль
-        </RouterLink-->
-        <!--RouterLink
-          to="/schedule"
-          class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground first:rounded-t-md last:rounded-b-md"
+          <Settings class="h-4 w-4" />
+          Настройки
+        </RouterLink>
+        <RouterLink
+          :to="`/booking/${authStore.slug}`"
+          class="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground last:rounded-b-md"
           @click="showMenu = false"
         >
           <Calendar class="h-4 w-4" />
-          Записи
-        </RouterLink-->
+          Страница записи
+        </RouterLink>
+        <div class="border-t border-border my-1" />
         <button
           type="button"
           class="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground first:rounded-t-md last:rounded-b-md"
@@ -75,7 +76,7 @@
 import { defineComponent } from "vue";
 import { RouterLink } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { User, Menu, LogOut, Calendar } from "lucide-vue-next";
+import { User, Menu, LogOut, Calendar, Settings } from "lucide-vue-next";
 
 export default defineComponent({
   name: "UserMenu",
@@ -85,6 +86,7 @@ export default defineComponent({
     Menu,
     LogOut,
     Calendar,
+    Settings,
   },
   data() {
     return {

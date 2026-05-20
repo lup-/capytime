@@ -21,6 +21,7 @@ export interface Psychologist {
   offlineAddress?: string;
   timezone?: string;
   videoLink?: string;
+  videoConferenceMode?: "per_booking" | "single";
   about?: string;
   education?: string;
   proExperience?: string;

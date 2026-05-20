@@ -115,6 +115,13 @@ export default defineComponent({
       );
     },
   },
+  watch: {
+    searchText() {
+      if (this.searchText && !this.isOpen) {
+        this.isOpen = true;
+      }
+    },
+  },
   methods: {
     toggle() {
       this.isOpen = !this.isOpen;

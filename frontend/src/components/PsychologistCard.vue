@@ -16,12 +16,27 @@
       <p class="font-medium text-foreground">
         {{ fullName }}
       </p>
+      <p class="text-xs text-muted-foreground mb-2">
+        Психолог
+      </p>
       <p
         v-if="psychologist.specialty"
         class="text-xs text-muted-foreground"
       >
         {{ psychologist.specialty }}
       </p>
+      <div
+        v-if="psychologist.problems?.length"
+        class="flex flex-wrap gap-1 justify-center mt-1"
+      >
+        <span
+          v-for="problem in psychologist.problems"
+          :key="problem"
+          class="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded"
+        >
+          {{ problem }}
+        </span>
+      </div>
     </div>
   </div>
 </template>

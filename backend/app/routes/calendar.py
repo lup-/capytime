@@ -223,6 +223,8 @@ async def get_available_slots(request: dict, db=Depends(get_db)):
                     occupied_times_by_date[date_key] = []
                 occupied_times_by_date[date_key].append((event_start, event_end))
 
+    now_psychologist_tz = datetime.now(psychologist_tz)
+
     result_days = []
     current_date = date_from.astimezone(psychologist_tz)
     date_from_tz = date_from.astimezone(psychologist_tz)
@@ -254,6 +256,9 @@ async def get_available_slots(request: dict, db=Depends(get_db)):
                 slot_h, slot_m = map(int, slot_time.split(":"))
                 slot_start = current_date.replace(hour=slot_h, minute=slot_m, second=0, microsecond=0)
                 slot_end = slot_start + timedelta(minutes=effective_duration)
+
+                if slot_start <= now_psychologist_tz:
+                    slot_available = False
 
                 for event_start_tz, event_end_tz in occupied_ranges:
                     if slot_start < event_end_tz and slot_end > event_start_tz:

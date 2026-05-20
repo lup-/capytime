@@ -1,11 +1,12 @@
 <template>
-  <p class="text-sm font-medium text-foreground mb-3 mt-12">
-    Превью страницы записи
-  </p>
-  <div
-    v-if="store.firstName"
-    class="rounded-xl border border-border p-4"
-  >
+  <div>
+    <p class="text-sm font-medium text-foreground mb-3 mt-12">
+      Превью страницы записи
+    </p>
+    <div
+      v-if="store.firstName"
+      class="rounded-xl border border-border p-4 opacity-60 pointer-events-none"
+    >
     <template v-if="step === 'online' || step === 'offline'">
       <UserBooking
         :psychologist="store.psychologist"
@@ -17,6 +18,7 @@
     <template v-else>
       <PsychologistCard :psychologist="store.psychologist" />
     </template>
+    </div>
   </div>
 </template>
 

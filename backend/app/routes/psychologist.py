@@ -28,6 +28,7 @@ def psychologist_to_profile(psychologist: dict) -> PsychologistProfile:
         offlineAddress=psychologist.get("offlineAddress"),
         timezone=psychologist.get("timezone"),
         videoLink=psychologist.get("videoLink"),
+        videoConferenceMode=psychologist.get("videoConferenceMode"),
         about=psychologist.get("about"),
         education=psychologist.get("education"),
         proExperience=psychologist.get("proExperience"),

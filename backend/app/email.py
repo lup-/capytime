@@ -4,6 +4,8 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
+from pathlib import Path
 from datetime import datetime
 
 import httpx
@@ -13,6 +15,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _sendsay_session: Optional[str] = None
+
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+_LOGO = (_ASSETS_DIR / "logo.jpg").read_bytes()
+_HELLO_CAPY = (_ASSETS_DIR / "hello_capy.jpg").read_bytes()
 
 
 def format_datetime(dt_str: str) -> str:
@@ -67,16 +73,34 @@ def refresh_sendsay_session() -> Optional[str]:
     return _sendsay_session
 
 
-def send_email_smtp(to: str, subject: str, text: str) -> dict:
+def send_email_smtp(to: str, subject: str, html: str, text: Optional[str] = None, images: Optional[list] = None) -> dict:
     if not settings.SMTP_HOST:
         return {"success": False, "error": "SMTP not configured"}
     
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = settings.SMTP_FROM_EMAIL
-        msg["To"] = to
-        msg.attach(MIMEText(text, "html", "utf-8"))
+        if images:
+            msg = MIMEMultipart("related")
+            msg["Subject"] = subject
+            msg["From"] = settings.SMTP_FROM_EMAIL
+            msg["To"] = to
+
+            alternative = MIMEMultipart("alternative")
+            if text:
+                alternative.attach(MIMEText(text, "plain", "utf-8"))
+            alternative.attach(MIMEText(html, "html", "utf-8"))
+            msg.attach(alternative)
+
+            for data, cid, mimetype in images:
+                img = MIMEImage(data, _subtype=mimetype.split("/")[-1])
+                img.add_header("Content-ID", f"<{cid}>")
+                img.add_header("Content-Disposition", "inline", filename=cid)
+                msg.attach(img)
+        else:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = settings.SMTP_FROM_EMAIL
+            msg["To"] = to
+            msg.attach(MIMEText(html, "html", "utf-8"))
 
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             server.starttls()
@@ -128,20 +152,79 @@ def send_email_sendsay(to: str, subject: str, text: str) -> dict:
         return {"success": False, "error": str(e)}
 
 
-def send_email(to: str, subject: str, text: str) -> dict:
-    return send_email_smtp(to, subject, text)
+def send_email(to: str, subject: str, html: str, text: Optional[str] = None, images: Optional[list] = None) -> dict:
+    return send_email_smtp(to, subject, html, text, images)
 
 
 def send_register_congrats_email(to: str, first_name: str, psychologist_slug: str) -> dict:
     subject = "Добро пожаловать в CapyTime!"
     booking_link = f"{settings.FRONTEND_URL}/booking/{psychologist_slug}"
-    text = f"""
-    <h1>Привет, {first_name}!</h1>
-    <p>Рады приветствовать вас на платформе CapyTime. Теперь клиенты могут записываться к вам на консультации.</p>
-    <p>Ссылка для записи клиентов: <a href="{booking_link}">{booking_link}</a></p>
-    <p>С уважением,<br>Команда CapyTime</p>
-    """
-    return send_email(to, subject, text)
+
+    plain_text = f"""Привет, {first_name}!
+
+Капи рада, что ты с нами!
+
+Теперь ты можешь разместить эту ссылку в соцсетях и рекламе, передать клиентам:
+{booking_link}
+
+С уважением,
+Команда CapyTime"""
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;color:#333;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;padding:20px;">
+        <tr>
+            <td style="text-align:center;padding:20px 0;">
+                <img src="cid:logo" alt="CapyTime" style="max-width:180px;height:auto;">
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:10px 0;">
+                <h1 style="color:#4a6741;font-size:24px;margin:0;">Привет, {first_name}!</h1>
+                <p style="font-size:16px;line-height:1.5;">Капи рада, что ты с нами!</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align:center;padding:20px 0;">
+                <img src="cid:hello_capy" alt="Hello Capy" style="max-width:100%;height:auto;border-radius:12px;">
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:10px 0;">
+                <p style="font-size:16px;line-height:1.5;">
+                    Теперь ты можешь разместить эту ссылку в соцсетях и рекламе, передать клиентам:
+                </p>
+                <p style="text-align:center;padding:10px 0;">
+                    <a href="{booking_link}" style="display:inline-block;padding:12px 24px;background-color:#4a6741;color:#fff;text-decoration:none;border-radius:6px;font-size:16px;">
+                        Ссылка для записи
+                    </a>
+                </p>
+                <p style="font-size:14px;line-height:1.5;word-break:break-all;">
+                    или скопируй: <a href="{booking_link}">{booking_link}</a>
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:20px 0;font-size:14px;color:#888;">
+                <p>С уважением,<br>Команда CapyTime</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+    return send_email(
+        to, subject, html,
+        text=plain_text,
+        images=[
+            (_LOGO, "logo", "image/jpeg"),
+            (_HELLO_CAPY, "hello_capy", "image/jpeg"),
+        ],
+    )
 
 
 def send_successful_booking_to_user(to: str, appointment: AppointmentData) -> dict:

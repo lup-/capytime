@@ -245,11 +245,20 @@
         v-if="showStepButton"
         type="button"
         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors w-full h-11"
-        :class="canSubmit ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'"
-        :disabled="!canSubmit"
+        :class="canSubmit && !submitting ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'"
+        :disabled="!canSubmit || submitting"
         @click="createAppointment"
       >
-        {{ submitButtonText }}
+        <template v-if="submitting">
+          <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ submitButtonText }}
+        </template>
+        <template v-else>
+          {{ submitButtonText }}
+        </template>
       </button>
     </div>
 
@@ -328,6 +337,7 @@ export default defineComponent({
       daysDragStartX: 0,
       daysDragScrollLeft: 0,
       loadingSlots: false,
+      submitting: false,
     };
   },
   computed: {
@@ -463,6 +473,7 @@ export default defineComponent({
         } else {
           const firstAvailableDay = data.days.find((d: { available: boolean }) => d.available);
           if (firstAvailableDay) {
+            this.selectedDate = new Date(firstAvailableDay.date);
             this.timeSlots = this.availableSlotsByDate[firstAvailableDay.date] || [];
           }
         }
@@ -484,6 +495,7 @@ export default defineComponent({
     },
     async createAppointment() {
       if (!this.selectedDate || !this.selectedTime || !this.psychologist) return;
+      this.submitting = true;
       
       const tzOffset = this.clientTimezone.match(/GMT([+-]\d+:\d+)/);
       const offset = tzOffset ? tzOffset[1] : "+03:00";
@@ -532,12 +544,15 @@ export default defineComponent({
           } catch {
             useErrorStore().showError("Не удалось создать запись");
           }
+          this.submitting = false;
           return;
         }
         
         const data = await response.json();
+        this.submitting = false;
         this.$emit("appointment-created", data);
       } catch (error) {
+        this.submitting = false;
         useErrorStore().showError("Не удалось создать запись");
         console.error("Error creating appointment:", error);
       }

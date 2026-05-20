@@ -79,10 +79,22 @@
           >
             Календарь подключён
           </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <RouterLink to="/personal-data-processing" class="text-xs text-primary hover:underline">
+                Согласие на обработку персональных данных
+              </RouterLink>
+              <Toggle v-model="agreed" />
+            </div>
+            <p class="text-xs text-muted-foreground">
+              Нажимая на кнопку «Далее», вы соглашаетесь с
+              <RouterLink to="/terms-of-service" class="text-primary hover:underline">условиями использования сервиса</RouterLink>
+            </p>
+          </div>
           <button
             type="button"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
-            :disabled="!store.googleCalendarConnected"
+            :disabled="!store.googleCalendarConnected || !agreed"
             @click="goNext"
           >
             Далее
@@ -121,7 +133,7 @@
                 :options="SPECIALTIES"
                 label-key="label"
                 value-key="value"
-                placeholder="Выберите направления..."
+                placeholder="Выберите из списка или напишите свой вариант..."
                 class="mt-1"
               />
             </div>
@@ -132,12 +144,11 @@
                 :options="PROBLEMS"
                 label-key="label"
                 value-key="value"
-                placeholder="Выберите проблемы..."
+                placeholder="Выберите из списка или напишите свой вариант..."
                 class="mt-1"
               />
             </div>
           </div>
-          <BookingPreview :step="currentStep" />
           <button
             type="button"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
@@ -146,6 +157,7 @@
           >
             Далее
           </button>
+          <BookingPreview :step="currentStep" class="mt-8" />
         </div>
 
         <!-- Шаг "Фото" -->
@@ -183,10 +195,9 @@
               />
             </label>
             <p class="text-xs text-muted-foreground">
-              JPG, GIF или PNG. Макс. 5MB.
+              JPG, GIF или PNG. Максимальный размер 5Мб.
             </p>
           </div>
-          <BookingPreview :step="currentStep" />
           <button
             type="button"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 w-full h-11"
@@ -201,6 +212,7 @@
           >
             Оставить без фото
           </button>
+          <BookingPreview :step="currentStep" class="mt-8" />
         </div>
 
         <!-- Шаг "Формат работы" -->
@@ -334,7 +346,7 @@
           >
             Далее
           </button>
-          <BookingPreview :step="currentStep" />
+          <BookingPreview :step="currentStep" class="mt-8" />
         </div>
 
         <!-- Шаг "Очно" -->
@@ -382,7 +394,7 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-foreground">
-              Часы работы как онлайн
+              Часы работы как для онлайн сессий
             </span>
             <Toggle v-model="store.offlineSameAsOnline" />
           </div>
@@ -440,7 +452,7 @@
           >
             Далее
           </button>
-          <BookingPreview :step="currentStep" />
+          <BookingPreview :step="currentStep" class="mt-8" />
         </div>
 
         <!-- Шаг "Перерыв" -->
@@ -608,6 +620,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { RouterLink } from "vue-router";
 import Header from "@/components/Header.vue";
 import OnboardingNav from "@/components/OnboardingNav.vue";
 import Footer from "@/components/Footer.vue";
@@ -624,6 +637,7 @@ import { Copy } from "lucide-vue-next";
 export default defineComponent({
   name: "OnboardingView",
   components: {
+    RouterLink,
     Header,
     OnboardingNav,
     Footer,
@@ -638,6 +652,7 @@ export default defineComponent({
       TIMEZONES: getTimezones(),
       SPECIALTIES,
       PROBLEMS,
+      agreed: false,
       isConnectingCalendar: false,
       isConnectingTelemost: false,
     };

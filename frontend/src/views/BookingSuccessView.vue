@@ -8,25 +8,31 @@
       />
 
       <div class="space-y-6">
-        <h2
-          class="text-2xl font-bold text-center"
-          :class="isExpired ? 'text-red-500' : 'text-foreground'"
-        >
-          {{ isExpired ? 'Встреча прошла' : 'Встреча запланирована ✓' }}
-        </h2>
+        <div>
+          <h2
+            class="text-2xl font-bold text-center"
+            :class="isExpired ? 'text-red-500' : 'text-foreground'"
+          >
+            {{ isExpired ? 'Встреча прошла' : 'Все получилось!' }}
+          </h2>
+          <h3 class="text-xl font-bold text-center" v-if="!isExpired">
+            Вы записаны к психологу ✓
+          </h3>
+        </div>
+
         <p class="text-muted-foreground text-center text-sm">
-          Информация о встрече направлена на почту
+          Информацию о встрече уже отправили на почту, ссылка для переноса записи так же там. Так же вы можете <a href="#" @click="rescheduleAgain">перенести встречу</a> при помощи ссылки ниже
         </p>
         <div class="rounded-xl border border-border p-4 space-y-2">
           <p
             v-if="selectedDate"
             class="font-medium text-foreground"
           >
-            {{ selectedDate.getDate() }} {{ monthName(selectedDate).toLowerCase() }},
+            {{ selectedDate.getDate() }} {{ monthName(selectedDate) }},
             {{ fullDayName(selectedDate).toLowerCase() }}
           </p>
           <p class="text-foreground">
-            {{ selectedTime }} (1 час)
+            {{ selectedTime }} — {{ endTime }}
           </p>
           <p class="text-sm text-muted-foreground">
             {{ format === 'online' ? 'Онлайн' : 'Очно' }}
@@ -125,8 +131,8 @@ export default defineComponent({
   data() {
     return {
       months: [
-        "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-        "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря",
       ] as string[],
       fullDayNames: [
         "Воскресенье", "Понедельник", "Вторник", "Среда",
@@ -139,6 +145,12 @@ export default defineComponent({
     };
   },
   computed: {
+    endTime(): string | null {
+      if (!this.selectedTime) return null;
+      const [hours, minutes] = this.selectedTime.split(":").map(Number);
+      const endHours = hours + 1;
+      return `${String(endHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    },
     isExpired(): boolean {
       if (!this.selectedDate || !this.selectedTime) return false;
       const [hours, minutes] = this.selectedTime.split(":");

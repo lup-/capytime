@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import datetime, timedelta
 from typing import List
 from bson import ObjectId
@@ -25,7 +25,7 @@ def parse_timezone(tz_str: str) -> ZoneInfo:
 
 
 @router.post("/", response_model=AppointmentResponse)
-async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
+async def create_appointment(data: AppointmentCreate, background_tasks: BackgroundTasks, db=Depends(get_db)):
     try:
         obj_id = ObjectId(data.psychologist_id)
     except Exception:
@@ -108,7 +108,7 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
 
     psychologist_name = f"{psychologist.get('firstName', '')} {psychologist.get('lastName', '')}".strip()
     psychologist_slug = psychologist.get("slug")
-    psychologist_emails = psychologist.get("email", [])
+    psychologist_emails = list(set(psychologist.get("email", [])))
 
     appointment_data = AppointmentData(
         client_name=data.client_name,
@@ -122,14 +122,11 @@ async def create_appointment(data: AppointmentCreate, db=Depends(get_db)):
         edit_token=edit_token,
     )
 
-    try:
-        if data.client_email:
-            send_successful_booking_to_user(data.client_email, appointment_data)
+    if data.client_email:
+        background_tasks.add_task(send_successful_booking_to_user, data.client_email, appointment_data)
 
-        for psychologist_email in psychologist_emails:
-            send_successful_booking_to_psychologist(psychologist_email, appointment_data)
-    except Exception as e:
-        pass
+    for psychologist_email in psychologist_emails:
+        background_tasks.add_task(send_successful_booking_to_psychologist, psychologist_email, appointment_data)
 
     return AppointmentResponse(**appointment)
 

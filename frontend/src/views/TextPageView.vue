@@ -2,14 +2,7 @@
   <div class="min-h-screen bg-background flex flex-col">
     <Header>
       <template #right>
-        <RouterLink to="/onboarding">
-          <button
-            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2"
-            type="button"
-          >
-            Регистрация
-          </button>
-        </RouterLink>
+        <HeaderButtons />
       </template>
     </Header>
 
@@ -28,8 +21,8 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { RouterLink } from "vue-router";
 import Header from "@/components/Header.vue";
+import HeaderButtons from "@/components/HeaderButtons.vue";
 import Footer from "@/components/Footer.vue";
 
 import privacyPolicyText from "@/assets/texts/privacy-policy.txt?raw";
@@ -45,8 +38,8 @@ const textContents: Record<string, string> = {
 export default defineComponent({
   name: "TextPageView",
   components: {
-    RouterLink,
     Header,
+    HeaderButtons,
     Footer,
   },
   props: {

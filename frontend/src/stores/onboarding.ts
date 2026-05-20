@@ -152,6 +152,7 @@ export const useOnboardingStore = defineStore("onboarding", {
         offlineAddress: this.offlineAddress || "",
         timezone: this.timezone,
         videoLink: this.videoLink || null,
+        videoConferenceMode: this.videoConferenceMode,
         problems: this.problems,
         googleCalendarConnected: this.googleCalendarConnected,
         yandexTelemostConnected: this.yandexTelemostConnected,
@@ -182,6 +183,13 @@ export const useOnboardingStore = defineStore("onboarding", {
         this.lastName = data.lastName;
       }
       
+      if (data.specialty) {
+        this.specialties = data.specialty.split(", ").filter(Boolean);
+      }
+      if (data.problems) {
+        this.problems = [...data.problems];
+      }
+
       this.googleCalendarConnected = data.googleCalendarConnected;
       this.yandexTelemostConnected = data.yandexTelemostConnected;
 
@@ -219,11 +227,11 @@ export const useOnboardingStore = defineStore("onboarding", {
         this.offlineAddress = data.offlineAddress;
       }
       
+      if (data.videoConferenceMode) {
+        this.videoConferenceMode = data.videoConferenceMode;
+      }
       if (data.videoLink) {
         this.videoLink = data.videoLink;
-        this.videoConferenceMode = "single";
-      } else {
-        this.videoConferenceMode = "per_booking";
       }
       
       if (data.avatar) {
