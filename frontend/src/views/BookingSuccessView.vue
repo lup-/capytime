@@ -38,27 +38,33 @@
             {{ format === 'online' ? 'Онлайн' : 'Очно' }}
           </p>
           <div
-            v-if="format === 'online' && psychologist.videoLink"
+            v-if="format === 'online' && effectiveVideoLink"
             class="flex items-start gap-2 flex-col"
           >
             <span class="text-sm text-muted-foreground">Ссылка на встречу:</span>
             <div class="flex gap-2 w-full items-center">
               <a
-                :href="psychologist.videoLink"
+                :href="effectiveVideoLink"
                 target="_blank"
                 class="text-primary text-sm hover:underline"
               >
-                {{ psychologist.videoLink }}
+                {{ effectiveVideoLink }}
               </a>
               <button
                 type="button"
                 class="text-muted-foreground hover:text-foreground"
-                @click="copyVideoLink"
+                @click="copyLink(effectiveVideoLink)"
               >
                 <Copy class="w-4 h-4" />
               </button>
             </div>
           </div>
+          <p
+            v-else-if="format === 'online'"
+            class="text-sm text-muted-foreground"
+          >
+            Пожалуйста, уточните у психолога ссылку на видеоконференцию
+          </p>
           <p
             v-else-if="format === 'offline' && psychologist.offlineAddress"
             class="text-sm text-muted-foreground"
@@ -142,6 +148,7 @@ export default defineComponent({
       selectedTime: null as string | null,
       format: "online" as "online" | "offline",
       loading: true,
+      appointmentVideoLink: null as string | null,
     };
   },
   computed: {
@@ -167,6 +174,12 @@ export default defineComponent({
     editToken(): string {
       return this.$route.params.editToken as string || "";
     },
+    effectiveVideoLink(): string | null {
+      if (this.psychologist?.videoConferenceMode === "single") {
+        return this.psychologist?.videoLink || null;
+      }
+      return this.appointmentVideoLink;
+    },
     yandexCalendarUrl(): string {
       if (!this.selectedDate || !this.selectedTime) return "#";
       const [hours, minutes] = this.selectedTime.split(":");
@@ -189,8 +202,8 @@ export default defineComponent({
       let desc = "Консультация с психологом";
       let place = "";
       
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      if (this.format === "online" && this.effectiveVideoLink) {
+        desc += `\nСсылка на встречу: ${this.effectiveVideoLink}`;
       } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
         place = this.psychologist.offlineAddress;
       }
@@ -224,8 +237,8 @@ export default defineComponent({
       let desc = "Консультация с психологом";
       let location = "";
       
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        desc += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      if (this.format === "online" && this.effectiveVideoLink) {
+        desc += `\nСсылка на встречу: ${this.effectiveVideoLink}`;
       } else if (this.format === "offline" && this.psychologist?.offlineAddress) {
         location = this.psychologist.offlineAddress;
       }
@@ -260,8 +273,8 @@ export default defineComponent({
       const now = formatDate(new Date());
       
       let description = "Консультация с психологом";
-      if (this.format === "online" && this.psychologist?.videoLink) {
-        description += `\nСсылка на встречу: ${this.psychologist.videoLink}`;
+      if (this.format === "online" && this.effectiveVideoLink) {
+        description += `\nСсылка на встречу: ${this.effectiveVideoLink}`;
       }
       
       const ics = `BEGIN:VCALENDAR
@@ -314,6 +327,7 @@ END:VCALENDAR`;
           this.selectedDate = dt;
           this.selectedTime = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
         }
+        this.appointmentVideoLink = data.video_link || null;
       } catch (error) {
         useErrorStore().showError("Не удалось загрузить данные записи");
       }
@@ -339,11 +353,9 @@ END:VCALENDAR`;
     fullDayName(date: Date): string {
       return this.fullDayNames[date.getDay()];
     },
-    copyVideoLink() {
-      if (this.psychologist?.videoLink) {
-        navigator.clipboard.writeText(this.psychologist.videoLink);
-        useErrorStore().showSuccess("Скопировано!");
-      }
+    copyLink(link: string) {
+      navigator.clipboard.writeText(link);
+      useErrorStore().showSuccess("Скопировано!");
     },
   },
 });

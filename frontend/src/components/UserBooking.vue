@@ -509,6 +509,7 @@ export default defineComponent({
           psychologist_id: this.psychologist.id,
           client_name: this.clientName,
           datetime: datetime,
+          format: this.format,
         };
         
         if (this.clientEmail) {
@@ -522,6 +523,7 @@ export default defineComponent({
             datetime: datetime,
             client_name: this.clientName,
             client_email: this.clientEmail || undefined,
+            format: this.format,
           };
         }
         

@@ -242,10 +242,27 @@ async def reschedule_appointment(data: AppointmentRescheduleRequest, db=Depends(
     start_time = dt_with_tz.astimezone(ZoneInfo("UTC"))
     end_time = start_time + timedelta(hours=1)
     
+    conference_link = None
+    video_conference_mode = psychologist.get("videoConferenceMode", "per_booking")
+    
+    if video_conference_mode == "per_booking":
+        from app.yandex_client import create_conference
+        
+        try:
+            conference_url = await create_conference()
+            if conference_url:
+                conference_link = conference_url
+        except Exception:
+            conference_link = None
+    elif video_conference_mode == "single":
+        conference_link = psychologist.get("videoLink")
+    
     summary = f"Консультация с {client_name}"
     description = f"Клиент: {client_name}"
     if client_email:
         description += f"\nПочта: {client_email}"
+    if conference_link:
+        description += f"\nВидеоконференция: {conference_link}"
     
     from app import google_client
     await google_client.update_calendar_event(
@@ -268,7 +285,7 @@ async def reschedule_appointment(data: AppointmentRescheduleRequest, db=Depends(
         client_phone=data.client_phone,
         datetime=data.datetime,
         notes=data.notes,
-        video_link=None,
+        video_link=conference_link if data.format == "online" else None,
         offline_address=psychologist.get("offlineAddress"),
     )
 
