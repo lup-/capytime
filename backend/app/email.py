@@ -257,7 +257,7 @@ def send_successful_booking_to_psychologist(to: str, appointment: AppointmentDat
     <p>У вас новая запись на консультацию.</p>
     <p><strong>Клиент:</strong> {appointment.client_name}</p>
     <p><strong>Дата и время:</strong> {formatted_dt}</p>
-    {reschedule_link}
+    {"<p><strong>Ссылка на видеовстречу:</strong> " + appointment.video_link + "</p>" if appointment.video_link else ""}
     {"<p><strong>Заметки:</strong> " + appointment.notes + "</p>" if appointment.notes else ""}
     <p>С уважением,<br>Команда CapyTime</p>
     """
