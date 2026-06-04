@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
+import { createRouter, createWebHistory, type RouterHistory, type RouteRecordRaw } from "vue-router";
 import IndexView from "./views/IndexView.vue";
 import OnboardingView from "./views/OnboardingView.vue";
 import ClientBookingView from "./views/ClientBookingView.vue";
@@ -7,6 +7,7 @@ import PsychologistProfileView from "./views/PsychologistProfileView.vue";
 import ScheduleView from "./views/ScheduleView.vue";
 import NotFoundView from "./views/NotFoundView.vue";
 import TextPageView from "./views/TextPageView.vue";
+import InfoView from "./views/InfoView.vue";
 import { ALL_STEPS } from "./stores/onboarding";
 
 const onboardingSteps: RouteRecordRaw[] = [
@@ -76,11 +77,20 @@ const routes: RouteRecordRaw[] = [
   { path: "/privacy-policy", name: "privacy-policy", component: TextPageView, props: { title: "Политика конфиденциальности", pageKey: "privacy-policy" } },
   { path: "/personal-data-processing", name: "personal-data-processing", component: TextPageView, props: { title: "Правила обработки персональных данных", pageKey: "personal-data-processing" } },
   { path: "/terms-of-service", name: "terms-of-service", component: TextPageView, props: { title: "Правила пользования сервисом", pageKey: "terms-of-service" } },
+  { path: "/capy/:slug", component: TextPageView, props: (r) => ({ pageKey: `capy/${r.params.slug}` }) },
+  { path: "/gorod/:slug", component: TextPageView, props: (r) => ({ pageKey: `gorod/${r.params.slug}` }) },
+  { path: "/sravni/:slug", component: TextPageView, props: (r) => ({ pageKey: `sravni/${r.params.slug}` }) },
+  { path: "/howto/:slug", component: TextPageView, props: (r) => ({ pageKey: `howto/${r.params.slug}` }) },
+  { path: "/info", name: "info", component: InfoView },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 
-export const router = createRouter({
-  history: createWebHistory(),
-  routes,
-});
+export function router(history?: RouterHistory) {
+  return createRouter({
+    history: history || createWebHistory(),
+    routes,
+  });
+}
+
+export { routes };
 

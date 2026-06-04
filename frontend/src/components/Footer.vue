@@ -3,6 +3,9 @@
     <div class="container mx-auto">
       <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
         <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
+          <RouterLink to="/info" class="hover:text-primary transition-colors">
+            Информация
+          </RouterLink>
           <RouterLink to="/privacy-policy" class="hover:text-primary transition-colors">
             Политика конфиденциальности
           </RouterLink>

@@ -233,7 +233,7 @@ def send_successful_booking_to_user(to: str, appointment: AppointmentData) -> di
     reschedule_link = ""
     if appointment.edit_token and appointment.psychologist_slug:
         reschedule_url = f"{settings.FRONTEND_URL}/booking/{appointment.psychologist_slug}/event/{appointment.edit_token}"
-        reschedule_link = f'<p><a href="{reschedule_url}">Перенести или отменить запись</a></p>'
+        reschedule_link = f'<p><a href="{reschedule_url}">Перенести запись</a></p>'
     text = f"""
     <h1>Здравствуйте, {appointment.client_name}!</h1>
     <p>Ваша запись на консультацию к психологу {appointment.psychologist_name} на {formatted_dt} подтверждена.</p>
@@ -248,10 +248,8 @@ def send_successful_booking_to_user(to: str, appointment: AppointmentData) -> di
 def send_successful_booking_to_psychologist(to: str, appointment: AppointmentData) -> dict:
     subject = "Новая запись на консультацию"
     formatted_dt = format_datetime(appointment.datetime)
-    reschedule_link = ""
     if appointment.edit_token and appointment.psychologist_slug:
         reschedule_url = f"{settings.FRONTEND_URL}/booking/{appointment.psychologist_slug}/event/{appointment.edit_token}"
-        reschedule_link = f'<p><a href="{reschedule_url}">Перенести или отменить запись</a></p>'
     text = f"""
     <h1>Здравствуйте, {appointment.psychologist_name}!</h1>
     <p>У вас новая запись на консультацию.</p>

@@ -15,7 +15,7 @@ export const useAuthStore = defineStore("auth", {
   state: (): AuthState => ({
     isAuthenticated: false,
     psychologist: null,
-    token: localStorage.getItem("psychologist_token"),
+    token: typeof localStorage !== "undefined" ? localStorage.getItem("psychologist_token") : null,
   }),
   getters: {
     slug(): string {

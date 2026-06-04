@@ -70,6 +70,7 @@ export const usePsychologistStore = defineStore("psychologist", {
   },
   actions: {
     async loadById(psychologistId: string): Promise<Psychologist | null> {
+      if (typeof window === "undefined") return null;
       try {
         const response = await fetch(`/api/psychologist/${psychologistId}`);
         if (!response.ok) {
@@ -85,6 +86,7 @@ export const usePsychologistStore = defineStore("psychologist", {
       }
     },
     async loadBySlug(slug: string): Promise<Psychologist | null> {
+      if (typeof window === "undefined") return null;
       try {
         const response = await fetch(`/api/psychologist/by-slug/${slug}`);
         if (!response.ok) {
@@ -101,6 +103,7 @@ export const usePsychologistStore = defineStore("psychologist", {
       }
     },
     async savePsychologist(psychologistId: string, data: Partial<PsychologistUpdateRequest>, sendEmail: boolean = false): Promise<boolean> {
+      if (typeof window === "undefined") return false;
       const authStore = useAuthStore();
       const token = authStore.token;
       if (!token) {

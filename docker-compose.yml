@@ -1,4 +1,23 @@
 services:
+  ssr-server:
+    build:
+      context: ./frontend
+      dockerfile: server/Dockerfile
+    ports:
+      - "3033:3000"
+    depends_on:
+      - backend
+    command: ["node", "--watch-path=./index.js", "--watch-path=./dist/server", "index.js"]
+    volumes:
+      - ./uploads:/app/uploads
+      - ./frontend/server/index.js:/app/index.js
+      - ./frontend/dist/client:/app/dist/client
+      - ./frontend/dist/server:/app/dist/server
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://backend:8000
+      - UPLOADS_DIR=/app/uploads
+
   backend:
     build: ./backend
     env_file: "./backend/.env"
@@ -12,6 +31,7 @@ services:
     volumes:
       - ./backend:/app
       - ./uploads:/app/uploads
+      - ./frontend/dist/client:/app/dist/client
 
   mongo:
     image: mongo:7

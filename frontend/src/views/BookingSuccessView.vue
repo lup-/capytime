@@ -21,7 +21,7 @@
         </div>
 
         <p class="text-muted-foreground text-center text-sm">
-          Информацию о встрече уже отправили на почту, ссылка для переноса записи так же там. Так же вы можете <a href="#" @click="rescheduleAgain">перенести встречу</a> при помощи ссылки ниже
+          Информацию о встрече уже отправили на почту, ссылка для переноса записи также там. Вы можете <a href="#" @click="rescheduleAgain">перенести встречу</a> при помощи ссылки ниже
         </p>
         <div class="rounded-xl border border-border p-4 space-y-2">
           <p
