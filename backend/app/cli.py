@@ -54,7 +54,7 @@ async def generate_sitemap(output_path: str, base_url: str):
 
     rough_string = tostring(urlset, encoding="unicode")
     reparsed = minidom.parseString(rough_string)
-    xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n' + reparsed.toprettyxml(indent="  ")
+    xml_content = reparsed.toprettyxml(indent="  ", encoding="UTF-8").decode("UTF-8")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:

@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
       name: "serve-uploads",
       configureServer(server) {
         server.middlewares.use("/uploads", (req, res) => {
-          const filePath = path.join(__dirname, "..", "uploads", req.url || "");
+          const filePath = path.join(__dirname, "..", "uploads", (req.url || "").split("?")[0]);
           if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             res.setHeader("Content-Type", "application/octet-stream");
             fs.createReadStream(filePath).pipe(res);

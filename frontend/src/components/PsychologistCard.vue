@@ -16,9 +16,6 @@
       <p class="font-medium text-foreground">
         {{ fullName }}
       </p>
-      <p class="text-xs text-muted-foreground mb-2">
-        Психолог
-      </p>
       <p
         v-if="psychologist.specialty"
         class="text-xs text-muted-foreground"

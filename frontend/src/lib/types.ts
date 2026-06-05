@@ -38,3 +38,8 @@ export interface Specialty {
   label: string;
   value: string;
 }
+
+export interface SpecialtyGroup {
+  label: string;
+  items: Specialty[];
+}

@@ -5,7 +5,9 @@ from app.schemas import PsychologistProfile, PsychologistUpdate
 from app.auth import decode_token
 from app.email import send_register_congrats_email
 from bson import ObjectId
+from PIL import Image
 import os
+import io
 import aiofiles
 
 router = APIRouter()
@@ -115,6 +117,10 @@ async def save_psychologist_params(
     return psychologist_to_response(psychologist)
 
 
+MAX_AVATAR_SIZE = 100 * 1024 * 1024
+AVATAR_SIZE = 250
+
+
 @router.post("/{psychologist_id}/upload-avatar")
 async def upload_avatar(
     psychologist_id: str,
@@ -142,6 +148,30 @@ async def upload_avatar(
     if not psychologist:
         raise HTTPException(status_code=404, detail="Psychologist not found")
 
+    content = await file.read()
+    if len(content) > MAX_AVATAR_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Max 100MB")
+
+    try:
+        img = Image.open(io.BytesIO(content))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file")
+
+    w, h = img.size
+    min_side = min(w, h)
+    left = (w - min_side) // 2
+    top = (h - min_side) // 2
+    img = img.crop((left, top, left + min_side, top + min_side))
+    img = img.resize((AVATAR_SIZE, AVATAR_SIZE), Image.LANCZOS)
+
+    icc_profile = img.info.get("icc_profile")
+    if img.mode == "RGBA":
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[3])
+        img = background
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
 
@@ -149,13 +179,19 @@ async def upload_avatar(
     if not os.path.exists(psychologist_dir):
         os.makedirs(psychologist_dir)
 
-    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    file_name = f"avatar{file_ext}"
-    file_path = os.path.join(psychologist_dir, file_name)
+    old_avatar = psychologist.get("avatar")
+    if old_avatar:
+        old_name = os.path.basename(old_avatar)
+        old_path = os.path.join(psychologist_dir, old_name)
+        if os.path.exists(old_path):
+            os.remove(old_path)
 
-    content = await file.read()
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content)
+    file_name = "avatar.webp"
+    file_path = os.path.join(psychologist_dir, file_name)
+    save_kwargs = {"format": "WEBP", "quality": 85}
+    if icc_profile:
+        save_kwargs["icc_profile"] = icc_profile
+    img.save(file_path, **save_kwargs)
 
     avatar_url = f"/uploads/{psychologist_id}/{file_name}"
     await db.psychologists.update_one(

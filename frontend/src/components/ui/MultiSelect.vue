@@ -40,21 +40,52 @@
       v-if="isOpen"
       class="absolute z-50 w-full mt-1 rounded-md border border-border bg-background shadow-lg max-h-60 overflow-auto"
     >
-      <button
-        v-for="option in filteredOptions"
-        :key="getLabel(option)"
-        type="button"
-        class="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
-        @click="toggleOption(option)"
-      >
-        <span
-          class="w-4 h-4 rounded border flex items-center justify-center"
-          :class="isSelected(getLabel(option)) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'"
+      <template v-if="groups && groups.length">
+        <template v-for="group in filteredGroups" :key="group.label">
+          <button
+            type="button"
+            class="w-full px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-secondary/50 flex items-center gap-2 hover:bg-secondary/80 transition-colors"
+            @click="toggleGroup(group.label)"
+          >
+            <span class="text-[10px] w-3 text-center">{{ expandedGroups[group.label] ? '▼' : '▶' }}</span>
+            {{ group.label }}
+          </button>
+          <template v-if="expandedGroups[group.label]">
+            <button
+              v-for="option in group.items"
+              :key="getLabel(option)"
+              type="button"
+              class="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2 pl-8"
+              @click="toggleOption(option)"
+            >
+              <span
+                class="w-4 h-4 rounded border flex items-center justify-center shrink-0"
+                :class="isSelected(getLabel(option)) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'"
+              >
+                <span v-if="isSelected(getLabel(option))">✓</span>
+              </span>
+              <span class="truncate">{{ getLabel(option) }}</span>
+            </button>
+          </template>
+        </template>
+      </template>
+      <template v-else>
+        <button
+          v-for="option in filteredOptions"
+          :key="getLabel(option)"
+          type="button"
+          class="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
+          @click="toggleOption(option)"
         >
-          <span v-if="isSelected(getLabel(option))">✓</span>
-        </span>
-        {{ getLabel(option) }}
-      </button>
+          <span
+            class="w-4 h-4 rounded border flex items-center justify-center"
+            :class="isSelected(getLabel(option)) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'"
+          >
+            <span v-if="isSelected(getLabel(option))">✓</span>
+          </span>
+          {{ getLabel(option) }}
+        </button>
+      </template>
       <div
         v-if="searchText && !hasExactMatch"
         class="px-3 py-2 text-sm text-muted-foreground border-t"
@@ -67,6 +98,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import type { SpecialtyGroup } from "@/lib/types";
 
 export default defineComponent({
   name: "MultiSelect",
@@ -77,7 +109,11 @@ export default defineComponent({
     },
     options: {
       type: Array,
-      required: true,
+      default: () => [],
+    },
+    groups: {
+      type: Array as () => SpecialtyGroup[],
+      default: null,
     },
     labelKey: {
       type: String,
@@ -97,6 +133,7 @@ export default defineComponent({
     return {
       isOpen: false,
       searchText: "",
+      expandedGroups: {} as Record<string, boolean>,
     };
   },
   computed: {
@@ -107,9 +144,31 @@ export default defineComponent({
         String(this.getLabel(opt)).toLowerCase().includes(query)
       );
     },
+    filteredGroups(): SpecialtyGroup[] {
+      if (!this.groups) return [];
+      if (!this.searchText) {
+        return this.groups;
+      }
+      const query = this.searchText.toLowerCase();
+      return this.groups
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((opt) =>
+            String(this.getLabel(opt)).toLowerCase().includes(query)
+          ),
+        }))
+        .filter((g) => g.items.length > 0);
+    },
     hasExactMatch(): boolean {
       if (!this.searchText) return false;
       const query = this.searchText.toLowerCase();
+      if (this.groups && this.groups.length) {
+        return this.groups.some((g) =>
+          g.items.some((opt) =>
+            String(this.getLabel(opt)).toLowerCase() === query
+          )
+        );
+      }
       return this.options.some((opt) =>
         String(this.getLabel(opt)).toLowerCase() === query
       );
@@ -120,16 +179,44 @@ export default defineComponent({
       if (this.searchText && !this.isOpen) {
         this.isOpen = true;
       }
+      if (this.groups && this.groups.length) {
+        if (this.searchText) {
+          const query = this.searchText.toLowerCase();
+          for (const g of this.groups) {
+            const hasMatch = g.items.some((opt) =>
+              String(this.getLabel(opt)).toLowerCase().includes(query)
+            );
+            if (hasMatch) {
+              this.expandedGroups[g.label] = true;
+            }
+          }
+        } else {
+          this.expandedGroups = {};
+        }
+      }
     },
   },
   methods: {
     toggle() {
       this.isOpen = !this.isOpen;
+      if (!this.isOpen) {
+        if (this.groups && this.groups.length) {
+          this.expandedGroups = {};
+        }
+        this.searchText = "";
+        (this.$refs.inputRef as HTMLInputElement).blur();
+      }
     },
     close() {
       this.isOpen = false;
+      if (this.groups && this.groups.length) {
+        this.expandedGroups = {};
+      }
       this.searchText = "";
       (this.$refs.inputRef as HTMLInputElement).blur();
+    },
+    toggleGroup(label: string) {
+      this.expandedGroups[label] = !this.expandedGroups[label];
     },
     getLabel(option: unknown): string {
       if (typeof option === "string") return option;
@@ -184,6 +271,7 @@ export default defineComponent({
       const target = e.target as HTMLElement;
       if (!target.closest("[data-multi-select]")) {
         this.isOpen = false;
+        this.expandedGroups = {};
         this.searchText = "";
       }
     },

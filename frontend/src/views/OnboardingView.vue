@@ -126,18 +126,18 @@
                 class="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </div>
-            <div>
+                <div>
               <label class="text-sm font-medium text-foreground">Специализация</label>
               <MultiSelect
                 v-model="store.specialties"
-                :options="SPECIALTIES"
+                :groups="SPECIALTY_GROUPS"
                 label-key="label"
                 value-key="value"
                 placeholder="Выберите из списка или напишите свой вариант..."
                 class="mt-1"
               />
             </div>
-            <div>
+            <div v-if="hasPsychologySpecialty">
               <label class="text-sm font-medium text-foreground">С чем вы работаете</label>
               <MultiSelect
                 v-model="store.problems"
@@ -195,7 +195,7 @@
               />
             </label>
             <p class="text-xs text-muted-foreground">
-              JPG, GIF или PNG. Максимальный размер 5Мб.
+              JPG, PNG или WebP. Максимальный размер 100Мб.
             </p>
           </div>
           <button
@@ -615,6 +615,13 @@
     </main>
 
     <Footer />
+
+    <AvatarCropperModal
+      v-if="cropFile"
+      :file="cropFile"
+      @confirm="onCropConfirm"
+      @cancel="onCropCancel"
+    />
   </div>
 </template>
 
@@ -627,9 +634,10 @@ import Footer from "@/components/Footer.vue";
 import Toggle from "@/components/ui/Toggle.vue";
 import MultiSelect from "@/components/ui/MultiSelect.vue";
 import BookingPreview from "@/components/BookingPreview.vue";
+import AvatarCropperModal from "@/components/AvatarCropperModal.vue";
 import { useOnboardingStore, DAYS } from "@/stores/onboarding";
 import { useAuthStore } from "@/stores/auth";
-import { usePsychologistStore, SPECIALTIES, PROBLEMS } from "@/stores/psychologist";
+import { usePsychologistStore, SPECIALTY_GROUPS, SPECIALTIES, PROBLEMS } from "@/stores/psychologist";
 import { useErrorStore } from "@/stores/error";
 import { getTimezones, getLocalTimezone } from "@/lib/utils";
 import { Copy } from "lucide-vue-next";
@@ -644,17 +652,20 @@ export default defineComponent({
     Toggle,
     MultiSelect,
     BookingPreview,
+    AvatarCropperModal,
     Copy,
   },
   data() {
     return {
       DAYS,
       TIMEZONES: getTimezones(),
+      SPECIALTY_GROUPS,
       SPECIALTIES,
       PROBLEMS,
       agreed: false,
       isConnectingCalendar: false,
       isConnectingTelemost: false,
+      cropFile: null as File | null,
     };
   },
   async mounted() {
@@ -707,6 +718,15 @@ export default defineComponent({
         return true;
       }
       return !!this.store.videoLink;
+    },
+    hasPsychologySpecialty(): boolean {
+      if (!this.store.specialties.length) return false;
+      const psychLabels = SPECIALTY_GROUPS
+        .find(g => g.label === "Психология")
+        ?.items.map(i => i.label.toLowerCase()) || [];
+      return this.store.specialties.some((s: string) =>
+        psychLabels.includes(s.toLowerCase())
+      );
     },
   },
   watch: {
@@ -826,8 +846,19 @@ export default defineComponent({
       const target = e.target as HTMLInputElement;
       const file = target.files?.[0];
       if (!file) return;
-      
-      this.uploadAvatar(file);
+
+      if (!file.type.startsWith("image/")) {
+        useErrorStore().showError("Можно загружать только изображения");
+        return;
+      }
+
+      if (file.size > 100 * 1024 * 1024) {
+        useErrorStore().showError("Файл слишком большой. Максимальный размер 100 МБ");
+        return;
+      }
+
+      this.cropFile = file;
+      target.value = "";
     },
     async uploadAvatar(file: File) {
       const psychologistId = this.authStore.psychologist?.id;
@@ -856,12 +887,19 @@ export default defineComponent({
         }
 
         const data = await response.json();
-        this.store.avatar = data.avatar_url;
+        this.store.avatar = data.avatar_url + "?t=" + Math.floor(Date.now() / 1000);
         this.store.persist();
       } catch (error) {
         console.error("Failed to upload avatar:", error);
         useErrorStore().showError("Не удалось загрузить аватар");
       }
+    },
+    onCropConfirm(croppedFile: File) {
+      this.cropFile = null;
+      this.uploadAvatar(croppedFile);
+    },
+    onCropCancel() {
+      this.cropFile = null;
     },
     async connectGoogleCalendar() {
       this.isConnectingCalendar = true;

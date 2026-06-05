@@ -36,31 +36,7 @@
         </div>
       </section>
 
-      <!-- How it works -->
-      <section class="container mx-auto px-4 py-16">
-        <div class="max-w-2xl text-left">
-          <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-6">
-            Как это работает
-          </h2>
-          <p class="mb-4">
-            Сервис CapyTime находит в вашем календаре свободные слоты и показывает их клиенту.
-          </p>
-          <p class="mb-4">
-            Ответьте на несколько вопросов, и мы настроим для вас: 
-          </p>
-          <ul class="list-disc list-inside space-y-2 mb-4 text-foreground marker:text-primary">
-            <li>дни и часы, свободные для бронирования;</li>
-            <li>расписание всех сеансов;</li>
-            <li>перерывы между сеансами;</li>
-            <li>запись на очный прием.</li>
-          </ul>
-          <p class="mb-4">
-            Добавим вашу ссылку на сервис для онлайн-встреч, чтобы сразу отправлять ее клиентам 
-          </p>
-        </div>
-      </section>
-
-      <!-- Security -->
+    <!-- Security -->
       <section class="container mx-auto px-4 py-16">
         <div class="max-w-2xl text-left">
           <h2 class="text-2xl md:text-3xl font-bold text-foreground mb-6">
