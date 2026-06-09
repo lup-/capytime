@@ -43868,7 +43868,8 @@ const SPECIALTY_GROUPS = [
       { label: "Логотерапия", value: "Логотерапия" },
       { label: "Поведенческая терапия", value: "Поведенческая терапия" },
       { label: "Гипнотерапия", value: "Гипнотерапия" },
-      { label: "Телесно-ориентированная терапия", value: "Телесно-ориентированная терапия" }
+      { label: "Телесно-ориентированная терапия", value: "Телесно-ориентированная терапия" },
+      { label: "Схема-терапия", value: "Схема-терапия" }
     ]
   },
   {
@@ -46169,7 +46170,7 @@ function _sfc_ssrRender$7(_ctx, _push, _parent, _attrs, $props, $setup, $data, $
     } else {
       _push(`<!---->`);
     }
-    _push(`<div class="space-y-2"><div class="flex items-center justify-between gap-3">`);
+    _push(`<div class="space-y-2 pt-6"><div class="flex items-center justify-between gap-3">`);
     _push(ssrRenderComponent_1(_component_RouterLink, {
       to: "/personal-data-processing",
       class: "text-xs text-primary hover:underline"
@@ -46845,41 +46846,47 @@ function _sfc_ssrRender$4(_ctx, _push, _parent, _attrs, $props, $setup, $data, $
   _push(`<div${ssrRenderAttrs_1(vueExports.mergeProps({ class: "min-h-screen bg-background flex flex-col" }, _attrs))}>`);
   _push(ssrRenderComponent_1(_component_Header, null, null, _parent));
   _push(`<main class="flex-1 container mx-auto px-4 py-8 max-w-md mx-auto">`);
-  _push(ssrRenderComponent_1(_component_PsychologistCard, {
-    psychologist: _ctx.psychologist,
-    class: "mb-6"
-  }, null, _parent));
-  _push(`<div class="space-y-6"><div><h2 class="${ssrRenderClass_1([_ctx.isExpired ? "text-red-500" : "text-foreground", "text-2xl font-bold text-center"])}">${ssrInterpolate_1(_ctx.isExpired ? "Встреча прошла" : "Все получилось!")}</h2>`);
-  if (!_ctx.isExpired) {
-    _push(`<h3 class="text-xl font-bold text-center"> Вы записаны к психологу ✓ </h3>`);
+  if (_ctx.loading) {
+    _push(`<div class="flex justify-center items-center py-20"><svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`);
   } else {
-    _push(`<!---->`);
+    _push(`<!--[-->`);
+    _push(ssrRenderComponent_1(_component_PsychologistCard, {
+      psychologist: _ctx.psychologist,
+      class: "mb-6"
+    }, null, _parent));
+    _push(`<div class="space-y-6"><div><h2 class="${ssrRenderClass_1([_ctx.isExpired ? "text-red-500" : "text-foreground", "text-2xl font-bold text-center"])}">${ssrInterpolate_1(_ctx.isExpired ? "Встреча прошла" : "Все получилось!")}</h2>`);
+    if (!_ctx.isExpired) {
+      _push(`<h3 class="text-xl font-bold text-center"> Вы записаны к психологу ✓ </h3>`);
+    } else {
+      _push(`<!---->`);
+    }
+    _push(`</div><p class="text-muted-foreground text-center text-sm"> Информацию о встрече уже отправили на почту, ссылка для переноса записи также там. Вы можете <a href="#">перенести встречу</a> при помощи ссылки ниже </p><div class="rounded-xl border border-border p-4 space-y-2">`);
+    if (_ctx.selectedDate) {
+      _push(`<p class="font-medium text-foreground">${ssrInterpolate_1(_ctx.selectedDate.getDate())} ${ssrInterpolate_1(_ctx.monthName(_ctx.selectedDate))}, ${ssrInterpolate_1(_ctx.fullDayName(_ctx.selectedDate).toLowerCase())}</p>`);
+    } else {
+      _push(`<!---->`);
+    }
+    _push(`<p class="text-foreground">${ssrInterpolate_1(_ctx.selectedTime)} — ${ssrInterpolate_1(_ctx.endTime)}</p><p class="text-sm text-muted-foreground">${ssrInterpolate_1(_ctx.format === "online" ? "Онлайн" : "Очно")}</p>`);
+    if (_ctx.format === "online" && _ctx.effectiveVideoLink) {
+      _push(`<div class="flex items-start gap-2 flex-col"><span class="text-sm text-muted-foreground">Ссылка на встречу:</span><div class="flex gap-2 w-full items-center"><a${ssrRenderAttr_1("href", _ctx.effectiveVideoLink)} target="_blank" class="text-primary text-sm hover:underline">${ssrInterpolate_1(_ctx.effectiveVideoLink)}</a><button type="button" class="text-muted-foreground hover:text-foreground">`);
+      _push(ssrRenderComponent_1(_component_Copy, { class: "w-4 h-4" }, null, _parent));
+      _push(`</button></div></div>`);
+    } else if (_ctx.format === "online") {
+      _push(`<p class="text-sm text-muted-foreground"> Пожалуйста, уточните у психолога ссылку на видеоконференцию </p>`);
+    } else if (_ctx.format === "offline" && _ctx.psychologist.offlineAddress) {
+      _push(`<p class="text-sm text-muted-foreground">${ssrInterpolate_1(_ctx.psychologist.offlineAddress)}</p>`);
+    } else {
+      _push(`<!---->`);
+    }
+    _push(`</div><div class="flex gap-2"><a${ssrRenderAttr_1("href", _ctx.yandexCalendarUrl)} target="_blank" class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"> Добавить в Яндекс.Календарь </a><a${ssrRenderAttr_1("href", _ctx.googleCalendarUrl)} target="_blank" class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"> Добавить в Google Календарь </a></div><a${ssrRenderAttr_1("href", _ctx.icsDownloadUrl)} download="appointment.ics" class="block text-xs text-muted-foreground text-center hover:text-foreground"> Скачать .ics файл </a>`);
+    if (!_ctx.isExpired) {
+      _push(`<button type="button" class="block text-sm text-primary hover:underline mx-auto"> Перенести запись </button>`);
+    } else {
+      _push(`<button type="button" class="block text-sm text-primary hover:underline mx-auto"> Записаться заново </button>`);
+    }
+    _push(`</div><!--]-->`);
   }
-  _push(`</div><p class="text-muted-foreground text-center text-sm"> Информацию о встрече уже отправили на почту, ссылка для переноса записи также там. Вы можете <a href="#">перенести встречу</a> при помощи ссылки ниже </p><div class="rounded-xl border border-border p-4 space-y-2">`);
-  if (_ctx.selectedDate) {
-    _push(`<p class="font-medium text-foreground">${ssrInterpolate_1(_ctx.selectedDate.getDate())} ${ssrInterpolate_1(_ctx.monthName(_ctx.selectedDate))}, ${ssrInterpolate_1(_ctx.fullDayName(_ctx.selectedDate).toLowerCase())}</p>`);
-  } else {
-    _push(`<!---->`);
-  }
-  _push(`<p class="text-foreground">${ssrInterpolate_1(_ctx.selectedTime)} — ${ssrInterpolate_1(_ctx.endTime)}</p><p class="text-sm text-muted-foreground">${ssrInterpolate_1(_ctx.format === "online" ? "Онлайн" : "Очно")}</p>`);
-  if (_ctx.format === "online" && _ctx.effectiveVideoLink) {
-    _push(`<div class="flex items-start gap-2 flex-col"><span class="text-sm text-muted-foreground">Ссылка на встречу:</span><div class="flex gap-2 w-full items-center"><a${ssrRenderAttr_1("href", _ctx.effectiveVideoLink)} target="_blank" class="text-primary text-sm hover:underline">${ssrInterpolate_1(_ctx.effectiveVideoLink)}</a><button type="button" class="text-muted-foreground hover:text-foreground">`);
-    _push(ssrRenderComponent_1(_component_Copy, { class: "w-4 h-4" }, null, _parent));
-    _push(`</button></div></div>`);
-  } else if (_ctx.format === "online") {
-    _push(`<p class="text-sm text-muted-foreground"> Пожалуйста, уточните у психолога ссылку на видеоконференцию </p>`);
-  } else if (_ctx.format === "offline" && _ctx.psychologist.offlineAddress) {
-    _push(`<p class="text-sm text-muted-foreground">${ssrInterpolate_1(_ctx.psychologist.offlineAddress)}</p>`);
-  } else {
-    _push(`<!---->`);
-  }
-  _push(`</div><div class="flex gap-2"><a${ssrRenderAttr_1("href", _ctx.yandexCalendarUrl)} target="_blank" class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"> Добавить в Яндекс.Календарь </a><a${ssrRenderAttr_1("href", _ctx.googleCalendarUrl)} target="_blank" class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"> Добавить в Google Календарь </a></div><a${ssrRenderAttr_1("href", _ctx.icsDownloadUrl)} download="appointment.ics" class="block text-xs text-muted-foreground text-center hover:text-foreground"> Скачать .ics файл </a>`);
-  if (!_ctx.isExpired) {
-    _push(`<button type="button" class="block text-sm text-primary hover:underline mx-auto"> Перенести запись </button>`);
-  } else {
-    _push(`<button type="button" class="block text-sm text-primary hover:underline mx-auto"> Записаться заново </button>`);
-  }
-  _push(`</div></main>`);
+  _push(`</main>`);
   _push(ssrRenderComponent_1(_component_Footer, null, null, _parent));
   _push(`</div>`);
 }

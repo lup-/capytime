@@ -79,7 +79,7 @@
           >
             Календарь подключён
           </div>
-          <div class="space-y-2">
+          <div class="space-y-2 pt-6">
             <div class="flex items-center justify-between gap-3">
               <RouterLink to="/personal-data-processing" class="text-xs text-primary hover:underline">
                 Согласие на обработку персональных данных

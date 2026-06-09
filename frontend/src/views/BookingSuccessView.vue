@@ -2,116 +2,124 @@
   <div class="min-h-screen bg-background flex flex-col">
     <Header />
     <main class="flex-1 container mx-auto px-4 py-8 max-w-md mx-auto">
-      <PsychologistCard
-        :psychologist="psychologist"
-        class="mb-6"
-      />
-
-      <div class="space-y-6">
-        <div>
-          <h2
-            class="text-2xl font-bold text-center"
-            :class="isExpired ? 'text-red-500' : 'text-foreground'"
-          >
-            {{ isExpired ? 'Встреча прошла' : 'Все получилось!' }}
-          </h2>
-          <h3 class="text-xl font-bold text-center" v-if="!isExpired">
-            Вы записаны к психологу ✓
-          </h3>
-        </div>
-
-        <p class="text-muted-foreground text-center text-sm">
-          Информацию о встрече уже отправили на почту, ссылка для переноса записи также там. Вы можете <a href="#" @click="rescheduleAgain">перенести встречу</a> при помощи ссылки ниже
-        </p>
-        <div class="rounded-xl border border-border p-4 space-y-2">
-          <p
-            v-if="selectedDate"
-            class="font-medium text-foreground"
-          >
-            {{ selectedDate.getDate() }} {{ monthName(selectedDate) }},
-            {{ fullDayName(selectedDate).toLowerCase() }}
-          </p>
-          <p class="text-foreground">
-            {{ selectedTime }} — {{ endTime }}
-          </p>
-          <p class="text-sm text-muted-foreground">
-            {{ format === 'online' ? 'Онлайн' : 'Очно' }}
-          </p>
-          <div
-            v-if="format === 'online' && effectiveVideoLink"
-            class="flex items-start gap-2 flex-col"
-          >
-            <span class="text-sm text-muted-foreground">Ссылка на встречу:</span>
-            <div class="flex gap-2 w-full items-center">
-              <a
-                :href="effectiveVideoLink"
-                target="_blank"
-                class="text-primary text-sm hover:underline"
-              >
-                {{ effectiveVideoLink }}
-              </a>
-              <button
-                type="button"
-                class="text-muted-foreground hover:text-foreground"
-                @click="copyLink(effectiveVideoLink)"
-              >
-                <Copy class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <p
-            v-else-if="format === 'online'"
-            class="text-sm text-muted-foreground"
-          >
-            Пожалуйста, уточните у психолога ссылку на видеоконференцию
-          </p>
-          <p
-            v-else-if="format === 'offline' && psychologist.offlineAddress"
-            class="text-sm text-muted-foreground"
-          >
-            {{ psychologist.offlineAddress }}
-          </p>
-        </div>
-        <div class="flex gap-2">
-          <a
-            :href="yandexCalendarUrl"
-            target="_blank"
-            class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
-          >
-            Добавить в Яндекс.Календарь
-          </a>
-          <a
-            :href="googleCalendarUrl"
-            target="_blank"
-            class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
-          >
-            Добавить в Google&nbsp;Календарь
-          </a>
-        </div>
-        <a
-          :href="icsDownloadUrl"
-          download="appointment.ics"
-          class="block text-xs text-muted-foreground text-center hover:text-foreground"
-        >
-          Скачать .ics файл
-        </a>
-        <button
-          v-if="!isExpired"
-          type="button"
-          class="block text-sm text-primary hover:underline mx-auto"
-          @click="rescheduleAgain"
-        >
-          Перенести запись
-        </button>
-        <button
-          v-else
-          type="button"
-          class="block text-sm text-primary hover:underline mx-auto"
-          @click="bookAgain"
-        >
-          Записаться заново
-        </button>
+      <div v-if="loading" class="flex justify-center items-center py-20">
+        <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
       </div>
+      <template v-else>
+        <PsychologistCard
+          :psychologist="psychologist"
+          class="mb-6"
+        />
+
+        <div class="space-y-6">
+          <div>
+            <h2
+              class="text-2xl font-bold text-center"
+              :class="isExpired ? 'text-red-500' : 'text-foreground'"
+            >
+              {{ isExpired ? 'Встреча прошла' : 'Все получилось!' }}
+            </h2>
+            <h3 class="text-xl font-bold text-center" v-if="!isExpired">
+              Вы записаны к психологу ✓
+            </h3>
+          </div>
+
+          <p class="text-muted-foreground text-center text-sm">
+            Информацию о встрече уже отправили на почту, ссылка для переноса записи также там. Вы можете <a href="#" @click="rescheduleAgain">перенести встречу</a> при помощи ссылки ниже
+          </p>
+          <div class="rounded-xl border border-border p-4 space-y-2">
+            <p
+              v-if="selectedDate"
+              class="font-medium text-foreground"
+            >
+              {{ selectedDate.getDate() }} {{ monthName(selectedDate) }},
+              {{ fullDayName(selectedDate).toLowerCase() }}
+            </p>
+            <p class="text-foreground">
+              {{ selectedTime }} — {{ endTime }}
+            </p>
+            <p class="text-sm text-muted-foreground">
+              {{ format === 'online' ? 'Онлайн' : 'Очно' }}
+            </p>
+            <div
+              v-if="format === 'online' && effectiveVideoLink"
+              class="flex items-start gap-2 flex-col"
+            >
+              <span class="text-sm text-muted-foreground">Ссылка на встречу:</span>
+              <div class="flex gap-2 w-full items-center">
+                <a
+                  :href="effectiveVideoLink"
+                  target="_blank"
+                  class="text-primary text-sm hover:underline"
+                >
+                  {{ effectiveVideoLink }}
+                </a>
+                <button
+                  type="button"
+                  class="text-muted-foreground hover:text-foreground"
+                  @click="copyLink(effectiveVideoLink)"
+                >
+                  <Copy class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <p
+              v-else-if="format === 'online'"
+              class="text-sm text-muted-foreground"
+            >
+              Пожалуйста, уточните у психолога ссылку на видеоконференцию
+            </p>
+            <p
+              v-else-if="format === 'offline' && psychologist.offlineAddress"
+              class="text-sm text-muted-foreground"
+            >
+              {{ psychologist.offlineAddress }}
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <a
+              :href="yandexCalendarUrl"
+              target="_blank"
+              class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
+            >
+              Добавить в Яндекс.Календарь
+            </a>
+            <a
+              :href="googleCalendarUrl"
+              target="_blank"
+              class="inline-flex items-center justify-center whitespace-normal text-center rounded-md text-sm font-medium ring-offset-background transition-colors bg-primary text-primary-foreground hover:bg-primary/90 flex-1 py-2 px-4"
+            >
+              Добавить в Google&nbsp;Календарь
+            </a>
+          </div>
+          <a
+            :href="icsDownloadUrl"
+            download="appointment.ics"
+            class="block text-xs text-muted-foreground text-center hover:text-foreground"
+          >
+            Скачать .ics файл
+          </a>
+          <button
+            v-if="!isExpired"
+            type="button"
+            class="block text-sm text-primary hover:underline mx-auto"
+            @click="rescheduleAgain"
+          >
+            Перенести запись
+          </button>
+          <button
+            v-else
+            type="button"
+            class="block text-sm text-primary hover:underline mx-auto"
+            @click="bookAgain"
+          >
+            Записаться заново
+          </button>
+        </div>
+      </template>
     </main>
     <Footer />
   </div>
